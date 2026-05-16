@@ -1,4 +1,8 @@
+import { restaurants } from "../data/restaurants";
+
 export default function Home() {
+  const activeRestaurant = restaurants[0];
+
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="mx-auto min-h-screen w-full max-w-md pb-28 sm:max-w-2xl lg:max-w-5xl lg:pb-10">
@@ -46,13 +50,15 @@ export default function Home() {
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-xl font-black">Burger Club</p>
+                    <p className="text-xl font-black">
+                      {activeRestaurant.nome}
+                    </p>
                     <p className="mt-1 text-sm font-bold text-black/55">
-                      Menu pronto in 18 min
+                      Menu pronto in {activeRestaurant.tempoStimato}
                     </p>
                   </div>
                   <div className="grid h-16 w-16 place-items-center rounded-2xl bg-[#ff6b00] text-2xl font-black text-white">
-                    B
+                    {activeRestaurant.nome.charAt(0)}
                   </div>
                 </div>
               </div>
@@ -60,11 +66,15 @@ export default function Home() {
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-white/10 p-4">
                   <p className="text-xs font-bold text-white/45">Tempo</p>
-                  <p className="mt-1 text-2xl font-black">18m</p>
+                  <p className="mt-1 text-2xl font-black">
+                    {activeRestaurant.tempoStimato}
+                  </p>
                 </div>
                 <div className="rounded-2xl bg-white/10 p-4">
                   <p className="text-xs font-bold text-white/45">Totale</p>
-                  <p className="mt-1 text-2xl font-black">EUR 14</p>
+                  <p className="mt-1 text-2xl font-black">
+                    {activeRestaurant.menu[0].prezzo}
+                  </p>
                 </div>
               </div>
             </div>
@@ -88,16 +98,16 @@ export default function Home() {
 
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             <button className="shrink-0 rounded-full bg-[#ff6b00] px-5 py-3 text-sm font-black">
-              Burger
-            </button>
-            <button className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
               Pizza
             </button>
             <button className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
               Sushi
             </button>
             <button className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
-              Pasta
+              Prenota
+            </button>
+            <button className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
+              Ritiro
             </button>
           </div>
         </section>
@@ -117,93 +127,65 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            <article className="overflow-hidden rounded-[1.75rem] bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
-              <div className="h-32 bg-[#ff6b00] p-4">
-                <div className="flex h-full items-end justify-between">
-                  <span className="rounded-full bg-black px-3 py-1.5 text-xs font-black text-white">
-                    -20%
-                  </span>
-                  <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-3xl font-black text-[#ff6b00]">
-                    B
+          <div className="grid gap-4 lg:grid-cols-2">
+            {restaurants.map((restaurant, index) => (
+              <article
+                className="overflow-hidden rounded-[1.75rem] bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)]"
+                key={restaurant.slug}
+              >
+                <div
+                  className={`h-32 p-4 ${
+                    index === 0 ? "bg-[#ff6b00]" : "bg-[#111111]"
+                  }`}
+                >
+                  <div className="flex h-full items-end justify-between">
+                    <span className="rounded-full bg-black px-3 py-1.5 text-xs font-black text-white">
+                      {restaurant.tempoStimato}
+                    </span>
+                    <div
+                      aria-label={restaurant.immaginePlaceholder}
+                      className={`grid h-20 w-20 place-items-center rounded-full text-3xl font-black ${
+                        index === 0
+                          ? "bg-white text-[#ff6b00]"
+                          : "bg-[#ff6b00] text-white"
+                      }`}
+                    >
+                      {restaurant.nome.charAt(0)}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-black">Burger Club</h3>
-                    <p className="mt-1 text-sm font-bold text-black/55">
-                      Burger, fries, shake
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-black">{restaurant.nome}</h3>
+                      <p className="mt-1 text-sm font-bold text-black/55">
+                        {restaurant.categoria}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-black px-2.5 py-1 text-xs font-black text-white">
+                      {restaurant.rating.toFixed(1)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm font-bold leading-6 text-black/55">
+                    {restaurant.descrizione}
+                  </p>
+                  <p className="mt-2 text-xs font-black uppercase text-black/40">
+                    {restaurant.indirizzo}
+                  </p>
+                  <div className="mt-4 rounded-xl bg-black/[0.04] p-3">
+                    <p className="text-sm font-black">
+                      {restaurant.menu[0].nome}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-black/55">
+                      {restaurant.menu[0].prezzo}
                     </p>
                   </div>
-                  <span className="rounded-full bg-black px-2.5 py-1 text-xs font-black text-white">
-                    4.8
-                  </span>
+                  <button className="mt-4 h-11 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white">
+                    Ordina ora
+                  </button>
                 </div>
-                <button className="mt-4 h-11 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white">
-                  Ordina ora
-                </button>
-              </div>
-            </article>
-
-            <article className="overflow-hidden rounded-[1.75rem] bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
-              <div className="h-32 bg-[#111111] p-4">
-                <div className="flex h-full items-end justify-between">
-                  <span className="rounded-full bg-[#ff6b00] px-3 py-1.5 text-xs font-black text-white">
-                    Top
-                  </span>
-                  <div className="grid h-20 w-20 place-items-center rounded-full bg-[#ff6b00] text-3xl font-black text-white">
-                    P
-                  </div>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-black">Pizza Sprint</h3>
-                    <p className="mt-1 text-sm font-bold text-black/55">
-                      Pizza, fritti, bibite
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-black px-2.5 py-1 text-xs font-black text-white">
-                    4.7
-                  </span>
-                </div>
-                <button className="mt-4 h-11 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white">
-                  Ordina ora
-                </button>
-              </div>
-            </article>
-
-            <article className="overflow-hidden rounded-[1.75rem] bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
-              <div className="h-32 bg-[#ff8a00] p-4">
-                <div className="flex h-full items-end justify-between">
-                  <span className="rounded-full bg-black px-3 py-1.5 text-xs font-black text-white">
-                    Gratis
-                  </span>
-                  <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-3xl font-black text-[#ff6b00]">
-                    S
-                  </div>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-black">Sushi Fast</h3>
-                    <p className="mt-1 text-sm font-bold text-black/55">
-                      Sushi, poke, ramen
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-black px-2.5 py-1 text-xs font-black text-white">
-                    4.9
-                  </span>
-                </div>
-                <button className="mt-4 h-11 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white">
-                  Ordina ora
-                </button>
-              </div>
-            </article>
+              </article>
+            ))}
           </div>
         </section>
       </div>
