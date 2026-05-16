@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: arrivo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: arrivo
+      POSTGRES_USER: arrivo
+      POSTGRES_PASSWORD: arrivo_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - arrivo_pgdata:/var/lib/postgresql/data
+
+volumes:
+  arrivo_pgdata:
+

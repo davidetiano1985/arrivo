@@ -1,0 +1,297 @@
+# PROMPT PER CLAUDE — CREAZIONE PDF PRESENTAZIONE ARRIVO
+
+Devi creare una presentazione PDF professionale, moderna e premium del progetto “Arrivo”.
+
+IMPORTANTE:
+- utilizza il logo e i colori presenti nel PDF allegato
+- mantieni coerenza cromatica con il brand
+- stile moderno startup tech premium
+- design minimal ma molto elegante
+- forte focus mobile-first
+- usare mockup realistici smartphone/tablet/dashboard
+- utilizzare icone moderne
+- creare un documento molto visivo e professionale
+- stile simile a pitch deck startup finanziabile
+- usare sfondi moderni
+- usare ottima gerarchia visiva
+- creare una presentazione altamente professionale
+
+La presentazione deve sembrare:
+- una startup reale pronta al lancio
+- tecnologica
+- innovativa
+- scalabile
+- moderna
+
+Formato:
+- PDF orizzontale professionale
+- stile keynote/apple/uber/airbnb
+- massimo impatto visivo
+
+
+# INFORMAZIONI COMPLETE SUL PROGETTO
+
+## NOME APP
+Arrivo
+
+
+# CONCEPT
+
+Arrivo è una piattaforma smart dedicata alla ristorazione che permette agli utenti di ordinare e prenotare un tavolo prima di arrivare al ristorante, trovando il cibo già pronto all’orario scelto.
+
+L’obiettivo è eliminare:
+- tempi di attesa
+- code
+- attese per ordinare
+- tempi morti nei ristoranti
+
+Arrivo NON è un delivery classico come Glovo o Deliveroo.
+
+Il focus è:
+“Trovare tutto pronto al proprio arrivo.”
+
+
+# COME FUNZIONA
+
+L’utente:
+1. apre Arrivo
+2. sceglie un ristorante
+3. visualizza tavoli disponibili live
+4. seleziona orario
+5. sceglie il tavolo
+6. ordina dal menu
+7. paga online
+8. arriva al ristorante
+9. trova tavolo e ordine già pronti
+
+
+# DIFFERENZA PRINCIPALE
+
+Con Arrivo:
+- non aspetti il cameriere
+- non aspetti la cucina
+- non perdi tempo
+- arrivi e mangi
+
+
+# TARGET
+
+Utenti:
+- persone che vogliono risparmiare tempo
+- lavoratori
+- coppie
+- gruppi
+- studenti
+- clienti smart/mobile-first
+
+Ristoranti:
+- pizzerie
+- sushi
+- pub
+- ristoranti gourmet
+- fast food
+- brunch
+- steakhouse
+- qualsiasi attività food
+
+
+# FUNZIONI PRINCIPALI CLIENTE
+
+- ricerca ristoranti
+- geolocalizzazione live
+- tavoli live
+- prenotazione smart
+- modalità “Arrivo Adesso”
+- prenotazioni future
+- pagamento anticipato
+- notifiche push
+- recensioni
+- preferiti
+- coupon
+- punti fedeltà
+- chat con ristorante
+
+
+# FUNZIONI RISTORANTE
+
+Dashboard dedicata.
+
+Ogni ristorante può:
+- gestire tavoli
+- gestire menu
+- creare categorie
+- aggiungere piatti
+- caricare foto
+- gestire allergeni
+- modificare disponibilità live
+- ricevere ordini live
+- vedere statistiche
+- creare promozioni
+- stampare ordini
+
+
+# SISTEMA TAVOLI LIVE
+
+Il ristorante può:
+- creare tavoli
+- bloccarli
+- renderli disponibili
+- segnare occupazione reale
+
+Gli utenti vedono disponibilità aggiornata in tempo reale.
+
+
+# MENU DINAMICO
+
+Ogni piatto può avere:
+- foto
+- descrizione
+- allergeni
+- varianti
+- extra
+- disponibilità giornaliera
+
+
+# PAGAMENTI
+
+Pagamento anticipato obbligatorio.
+
+Supporto:
+- Carta
+- Apple Pay
+- Google Pay
+- PayPal
+
+
+# BUSINESS MODEL
+
+Utente:
+- nessuna commissione
+
+Arrivo guadagna:
+- tramite commissioni sui ristoranti
+- commissioni personalizzate per categoria attività
+
+
+# SUPER ADMIN PANEL
+
+Sistema centrale avanzato dove l’amministrazione Arrivo può:
+- approvare ristoranti
+- monitorare tutto live
+- vedere statistiche globali
+- monitorare ordini
+- controllare città migliori
+- analizzare trend
+- esportare PDF/Excel
+- gestire commissioni
+
+
+# ANALYTICS
+
+Dashboard live con:
+- ordini
+- utenti
+- città
+- categorie
+- volumi
+- trend
+- mappe live
+
+
+# DESIGN
+
+Focus assoluto mobile-first.
+
+Utenti:
+- principalmente smartphone
+
+Ristoranti:
+- tablet o pc dedicati
+
+Stile UI:
+- premium
+- moderno
+- veloce
+- intuitivo
+- elegante
+
+
+# TECNOLOGIE
+
+Frontend:
+- Next.js
+- React
+
+Backend:
+- Python FastAPI
+
+Database:
+- PostgreSQL
+
+Desktop futuro:
+- Electron
+
+Futuro:
+- app iOS
+- app Android
+
+
+# OBIETTIVO
+
+Arrivo vuole rivoluzionare l’esperienza ristorante.
+
+Non più:
+- attese
+- file
+- tempi morti
+
+Ma:
+- arrivo immediato
+- tavolo pronto
+- ordine pronto
+- esperienza premium
+
+
+# COSA DEVI CREARE
+
+Devi creare:
+
+1. Presentazione PDF premium
+2. Copertina professionale
+3. Slide moderne
+4. Mockup app mobile
+5. Mockup dashboard ristorante
+6. Mockup admin panel
+7. Grafici moderni
+8. Layout startup professionale
+9. Sezioni molto visive
+10. Impatto visivo molto alto
+
+
+# STILE GRAFICO DESIDERATO
+
+Ispirazioni:
+- Apple
+- Uber
+- Airbnb
+- Stripe
+- Notion
+
+Mood:
+- premium
+- futuristico
+- pulito
+- startup tech
+- dark/light elegante
+
+
+# IMPORTANTE
+
+- NON creare una presentazione banale
+- NON fare slide troppo piene
+- usa molto visual design
+- usa mockup realistici
+- usa tipografia moderna
+- usa spaziature premium
+- rendi il progetto credibile e finanziabile
+- crea una vera presentazione startup professionale

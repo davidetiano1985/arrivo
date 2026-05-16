@@ -1,0 +1,2 @@
+"""Authentication dependency placeholders."""
+

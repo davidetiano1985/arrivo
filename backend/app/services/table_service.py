@@ -1,0 +1,2 @@
+"""Table service placeholders."""
+

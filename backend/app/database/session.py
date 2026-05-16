@@ -1,0 +1,2 @@
+"""PostgreSQL session setup placeholder."""
+

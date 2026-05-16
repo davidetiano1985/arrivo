@@ -1,0 +1,2 @@
+"""Table model placeholders."""
+

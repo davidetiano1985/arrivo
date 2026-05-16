@@ -1,0 +1,263 @@
+ROADMAP PROGETTO ARRIVO
+Versione iniziale modificabile
+
+====================================
+OBIETTIVO
+====================================
+
+Creare Arrivo, una web app mobile-first dove il cliente ordina e prenota prima di arrivare al ristorante, paga in anticipo e trova tavolo e ordine pronti all’orario scelto.
+
+Il progetto sarà guidato passo passo.
+
+Questa roadmap può cambiare durante lo sviluppo.
+
+====================================
+RUOLI DEGLI STRUMENTI
+====================================
+
+CHATGPT
+- guida del progetto
+- decisioni tecniche
+- struttura lavoro
+- controllo qualità
+- creazione prompt per Claude/Codex
+- organizzazione sviluppo
+
+CLAUDE
+- presentazioni PDF
+- testi lunghi
+- UX writing
+- bozze grafiche
+- concept visivi
+- pitch deck
+
+CODEX
+- codice frontend
+- codice backend
+- componenti UI
+- refactoring
+- correzione errori
+
+PYTHON
+- backend
+- API
+- database
+- logica ordini
+- automazioni
+- esportazioni PDF/Excel
+
+ELECTRON
+- app desktop futura per ristoranti/admin
+- non prioritaria nella prima fase
+
+====================================
+FASE 1 — DEFINIZIONE PROGETTO
+====================================
+
+Stato: IN CORSO
+
+Da fare:
+- definire funzioni MVP
+- definire flusso cliente
+- definire flusso ristorante
+- definire flusso admin
+- definire pagamenti
+- definire tavoli live
+- definire menu live
+
+Output:
+- specifica completa app
+- documento funzionale
+- presentazione progetto
+
+====================================
+FASE 2 — STRUTTURA TECNICA
+====================================
+
+Stack iniziale consigliato:
+
+Frontend:
+- Next.js
+- React
+- Tailwind CSS
+
+Backend:
+- Python
+- FastAPI
+
+Database:
+- PostgreSQL
+
+Autenticazione:
+- email
+- telefono
+- Google
+- Apple
+
+Pagamenti:
+- Stripe
+- PayPal
+
+Hosting:
+- da decidere dopo
+
+====================================
+FASE 3 — CREAZIONE CARTELLE PROGETTO
+====================================
+
+Struttura consigliata:
+
+arrivo/
+- frontend/
+- backend/
+- database/
+- docs/
+- assets/
+- design/
+- admin/
+- restaurant-panel/
+- mobile-webapp/
+
+Primo comando:
+
+mkdir arrivo
+cd arrivo
+mkdir frontend backend database docs assets design admin restaurant-panel mobile-webapp
+
+====================================
+FASE 4 — MVP PRIMA VERSIONE
+====================================
+
+MVP cliente:
+- registrazione/login
+- ricerca ristoranti
+- geolocalizzazione
+- scheda ristorante
+- menu
+- scelta tavolo
+- scelta orario
+- ordine
+- pagamento
+- conferma ordine
+- notifiche base
+
+MVP ristorante:
+- login ristorante
+- dashboard ordini
+- gestione tavoli
+- gestione menu
+- conferma ordine
+- stampa ordine
+- disponibilità live
+
+MVP admin:
+- login admin
+- gestione ristoranti
+- approvazione ristoranti
+- gestione commissioni
+- statistiche base
+- monitor ordini live
+
+====================================
+FASE 5 — GRAFICA
+====================================
+
+Claude si occuperà di:
+- presentazione PDF
+- concept grafico
+- schermate mobile
+- dashboard ristorante
+- dashboard admin
+- palette colori basata sul logo
+
+Poi Codex trasformerà la grafica in codice React.
+
+====================================
+FASE 6 — SVILUPPO FRONTEND
+====================================
+
+Prima pagine da creare:
+1. Homepage Arrivo
+2. Login/Register cliente
+3. Ricerca ristoranti
+4. Scheda ristorante
+5. Menu ristorante
+6. Carrello ordine
+7. Checkout
+8. Conferma prenotazione
+
+Dopo:
+- pannello ristorante
+- pannello admin
+
+====================================
+FASE 7 — SVILUPPO BACKEND
+====================================
+
+API principali:
+- utenti
+- ristoranti
+- tavoli
+- menu
+- piatti
+- ordini
+- pagamenti
+- notifiche
+- recensioni
+- statistiche
+
+====================================
+FASE 8 — DATABASE
+====================================
+
+Tabelle iniziali:
+- users
+- restaurants
+- restaurant_categories
+- tables
+- menu_categories
+- dishes
+- dish_images
+- allergens
+- orders
+- order_items
+- payments
+- reviews
+- commissions
+- admin_logs
+
+====================================
+FASE 9 — FUNZIONI FUTURE
+====================================
+
+Da non fare subito:
+- app iOS
+- app Android
+- Electron desktop
+- unione tavoli
+- AI suggerimenti menu
+- loyalty avanzata
+- analytics avanzati
+- mappa live completa
+
+====================================
+PRIMO PASSO OPERATIVO
+====================================
+
+1. Salvare questa roadmap.
+2. Creare cartella progetto.
+3. Creare file docs/SPECIFICA_ARRIVO.md.
+4. Preparare prompt per Codex.
+5. Iniziare frontend mobile-first.
+
+====================================
+REGOLA DI LAVORO
+====================================
+
+Si procede sempre:
+- una fase alla volta
+- poche istruzioni per volta
+- controllo dopo ogni step
+- niente sviluppo confuso
+- ogni decisione può essere cambiata se serve
+
