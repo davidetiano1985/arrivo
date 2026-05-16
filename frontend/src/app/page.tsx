@@ -4,28 +4,28 @@ export default function Home() {
   const activeRestaurant = restaurants[0];
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen overflow-x-hidden bg-black text-white">
       <div className="mx-auto min-h-screen w-full max-w-md pb-28 sm:max-w-2xl lg:max-w-5xl lg:pb-10">
-        <header className="flex items-center justify-between px-5 pt-5">
-          <div>
+        <header className="flex items-center justify-between gap-3 px-4 pt-5 sm:px-5">
+          <div className="min-w-0">
             <p className="text-2xl font-black tracking-[0.16em]">ARRIVO</p>
             <p className="mt-1 text-xs font-bold uppercase text-white/45">
               Food delivery premium
             </p>
           </div>
 
-          <button className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
+          <button className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-black text-black">
             Milano
           </button>
         </header>
 
-        <section className="px-5 pt-6">
-          <div className="overflow-hidden rounded-[2rem] bg-[#ff6b00] p-6 shadow-[0_24px_70px_rgba(255,107,0,0.26)] lg:grid lg:grid-cols-[1fr_0.8fr] lg:gap-8 lg:p-8">
+        <section className="px-4 pt-6 sm:px-5">
+          <div className="overflow-hidden rounded-[2rem] bg-[#ff6b00] p-5 shadow-[0_24px_70px_rgba(255,107,0,0.26)] sm:p-6 lg:grid lg:grid-cols-[1fr_0.8fr] lg:gap-8 lg:p-8">
             <div>
               <p className="inline-flex rounded-full bg-black px-4 py-2 text-xs font-black uppercase">
                 Ordina ora
               </p>
-              <h1 className="mt-5 text-5xl font-black leading-[0.9] tracking-normal text-white sm:text-6xl lg:text-7xl">
+              <h1 className="mt-5 text-[2.65rem] font-black leading-[0.95] tracking-normal text-white sm:text-6xl lg:text-7xl">
                 Ordina. Prenota. Arriva.
               </h1>
               <p className="mt-5 max-w-xl text-base font-bold leading-7 text-white/90">
@@ -33,11 +33,11 @@ export default function Home() {
                 homepage mobile-first per mangiare senza attese.
               </p>
 
-              <div className="mt-6 flex gap-3">
-                <button className="h-12 rounded-2xl bg-black px-5 text-sm font-black text-white">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button className="h-12 w-full rounded-2xl bg-black px-5 text-sm font-black text-white sm:w-auto">
                   Trova ristoranti
                 </button>
-                <button className="h-12 rounded-2xl bg-white px-5 text-sm font-black text-black">
+                <button className="h-12 w-full rounded-2xl bg-white px-5 text-sm font-black text-black sm:w-auto">
                   Prenota
                 </button>
               </div>
@@ -49,15 +49,15 @@ export default function Home() {
                   Arrivo adesso
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xl font-black">
+                  <div className="min-w-0">
+                    <p className="break-words text-xl font-black">
                       {activeRestaurant.nome}
                     </p>
                     <p className="mt-1 text-sm font-bold text-black/55">
                       Menu pronto in {activeRestaurant.tempoStimato}
                     </p>
                   </div>
-                  <div className="grid h-16 w-16 place-items-center rounded-2xl bg-[#ff6b00] text-2xl font-black text-white">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-[#ff6b00] text-2xl font-black text-white">
                     {activeRestaurant.nome.charAt(0)}
                   </div>
                 </div>
@@ -81,7 +81,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="px-5 pt-5">
+        <section className="px-4 pt-5 sm:px-5">
           <div className="flex items-center gap-3 rounded-2xl bg-white p-2 text-black">
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-black text-lg font-black text-white">
               Q
@@ -96,29 +96,29 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            <button className="shrink-0 rounded-full bg-[#ff6b00] px-5 py-3 text-sm font-black">
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button className="rounded-full bg-[#ff6b00] px-5 py-3 text-sm font-black">
               Pizza
             </button>
-            <button className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
+            <button className="rounded-full bg-white px-5 py-3 text-sm font-black text-black">
               Sushi
             </button>
-            <button className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
+            <button className="rounded-full bg-white px-5 py-3 text-sm font-black text-black">
               Prenota
             </button>
-            <button className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
+            <button className="rounded-full bg-white px-5 py-3 text-sm font-black text-black">
               Ritiro
             </button>
           </div>
         </section>
 
-        <section className="px-5 pt-7">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
+        <section className="px-4 pt-7 sm:px-5">
+          <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
               <p className="text-sm font-black uppercase text-[#ff6b00]">
                 Vicino a te
               </p>
-              <h2 className="mt-1 text-3xl font-black">
+              <h2 className="mt-1 break-words text-3xl font-black">
                 Ristoranti popolari
               </h2>
             </div>
@@ -156,8 +156,10 @@ export default function Home() {
                 </div>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl font-black">{restaurant.nome}</h3>
+                    <div className="min-w-0">
+                      <h3 className="break-words text-xl font-black">
+                        {restaurant.nome}
+                      </h3>
                       <p className="mt-1 text-sm font-bold text-black/55">
                         {restaurant.categoria}
                       </p>
@@ -166,14 +168,14 @@ export default function Home() {
                       {restaurant.rating.toFixed(1)}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm font-bold leading-6 text-black/55">
+                  <p className="mt-3 break-words text-sm font-bold leading-6 text-black/55">
                     {restaurant.descrizione}
                   </p>
-                  <p className="mt-2 text-xs font-black uppercase text-black/40">
+                  <p className="mt-2 break-words text-xs font-black uppercase text-black/40">
                     {restaurant.indirizzo}
                   </p>
                   <div className="mt-4 rounded-xl bg-black/[0.04] p-3">
-                    <p className="text-sm font-black">
+                    <p className="break-words text-sm font-black">
                       {restaurant.menu[0].nome}
                     </p>
                     <p className="mt-1 text-xs font-bold text-black/55">

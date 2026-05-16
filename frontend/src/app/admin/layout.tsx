@@ -8,7 +8,7 @@ const adminLinks = [
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen overflow-x-hidden bg-black text-white">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-black px-6 py-7 md:flex md:flex-col">
         <Link className="text-2xl font-black text-[#ff6b00]" href="/admin">
           Arrivo Admin
@@ -32,10 +32,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           Arrivo Admin
         </Link>
 
-        <nav className="mt-4 flex gap-2 overflow-x-auto">
+        <nav className="mt-4 flex flex-wrap gap-2">
           {adminLinks.map((link) => (
             <Link
-              className="shrink-0 rounded-full border border-white/10 px-4 py-2 text-sm font-black text-white/75 transition hover:border-[#ff6b00] hover:text-[#ff6b00]"
+              className="rounded-full border border-white/10 px-4 py-2 text-sm font-black text-white/75 transition hover:border-[#ff6b00] hover:text-[#ff6b00]"
               href={link.href}
               key={link.href}
             >

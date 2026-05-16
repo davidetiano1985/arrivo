@@ -159,7 +159,7 @@ export default function AdminUsersPage() {
     selectedRoles[selectedUser.id] !== "super_admin";
 
   return (
-    <main className="min-h-screen bg-black px-4 py-6 text-white sm:px-5 sm:py-8">
+    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-5 sm:py-8">
       <section className="mx-auto w-full max-w-5xl">
         <div className="mb-6">
           <p className="text-sm font-black uppercase text-[#ff6b00]">
@@ -189,7 +189,7 @@ export default function AdminUsersPage() {
           </article>
         </div>
 
-        <div className="mb-4 grid gap-3 rounded-2xl bg-white p-4 text-black sm:grid-cols-[1fr_1fr_auto]">
+        <div className="mb-4 grid gap-3 rounded-2xl bg-white p-4 text-black lg:grid-cols-[1fr_1fr_auto]">
           <div>
             <label
               className="block text-xs font-black uppercase text-black/45"
@@ -198,7 +198,7 @@ export default function AdminUsersPage() {
               Cerca
             </label>
             <input
-              className="mt-2 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none placeholder:text-black/35"
+              className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none placeholder:text-black/35"
               id="user-search"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Cerca per nome o email"
@@ -215,7 +215,7 @@ export default function AdminUsersPage() {
               Filtra per ruolo
             </label>
             <select
-              className="mt-2 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black"
+              className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black"
               id="role-filter"
               onChange={(event) => setRoleFilter(event.target.value)}
               value={roleFilter}
@@ -231,7 +231,7 @@ export default function AdminUsersPage() {
 
           <div className="flex items-end">
             <button
-              className="h-11 w-full rounded-xl bg-black px-4 text-sm font-black text-white sm:w-auto"
+              className="h-12 w-full rounded-xl bg-black px-4 text-sm font-black text-white lg:w-auto"
               onClick={() => {
                 setSearchQuery("");
                 setRoleFilter("all");
@@ -242,7 +242,136 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+        <div className="grid gap-4 lg:hidden">
+          {filteredUsers.map((user) => (
+            <article
+              className="rounded-2xl bg-white p-4 text-black shadow-[0_18px_45px_rgba(0,0,0,0.22)]"
+              key={user.id}
+            >
+              <div className="min-w-0">
+                <h2 className="break-words text-xl font-black">
+                  {user.nome}
+                </h2>
+                <p className="mt-1 break-all text-sm font-bold text-black/55">
+                  {user.email}
+                </p>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl bg-black/[0.04] p-3">
+                  <p className="text-xs font-black uppercase text-black/45">
+                    Ruolo
+                  </p>
+                  <span
+                    className={`mt-2 inline-flex max-w-full break-all rounded-full px-3 py-1 text-xs font-black ${getRoleBadgeClass(
+                      selectedRoles[user.id]
+                    )}`}
+                  >
+                    {selectedRoles[user.id]}
+                  </span>
+                  <select
+                    className="mt-3 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none"
+                    value={selectedRoles[user.id]}
+                    onChange={(event) => {
+                      setSelectedRoles((currentRoles) => ({
+                        ...currentRoles,
+                        [user.id]: event.target.value
+                      }));
+                      updateLastUpdated(user.id);
+                      console.log("role changed");
+                    }}
+                  >
+                    {!roleOptions.includes(selectedRoles[user.id]) && (
+                      <option value={selectedRoles[user.id]}>
+                        {selectedRoles[user.id]}
+                      </option>
+                    )}
+                    {roleOptions.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-2xl bg-black/[0.04] p-3">
+                  <p className="text-xs font-black uppercase text-black/45">
+                    Stato
+                  </p>
+                  <span
+                    className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-black ${getStatusBadgeClass(
+                      userStatuses[user.id]
+                    )}`}
+                  >
+                    {getStatusLabel(userStatuses[user.id])}
+                  </span>
+                  <button
+                    className="mt-3 h-12 w-full rounded-xl bg-[#ff6b00] px-4 text-sm font-black text-white"
+                    onClick={() => {
+                      setUserStatuses((currentStatuses) => ({
+                        ...currentStatuses,
+                        [user.id]:
+                          currentStatuses[user.id] === "active"
+                            ? "suspended"
+                            : "active"
+                      }));
+                      updateLastUpdated(user.id);
+                    }}
+                  >
+                    {userStatuses[user.id] === "active"
+                      ? "Sospendi"
+                      : "Attiva"}
+                  </button>
+                </div>
+
+                <div className="rounded-2xl bg-black/[0.04] p-3">
+                  <p className="text-xs font-black uppercase text-black/45">
+                    Accesso ristoranti
+                  </p>
+                  <p className="mt-2 break-words text-sm font-bold leading-6 text-black/65">
+                    {restaurantAccess[user.id].length > 0
+                      ? restaurantAccess[user.id].join(", ")
+                      : "Nessun ristorante"}
+                  </p>
+                  <button
+                    className="mt-3 h-12 w-full rounded-xl bg-black px-4 text-sm font-black text-white"
+                    onClick={() => {
+                      setRestaurantAccess((currentAccess) => ({
+                        ...currentAccess,
+                        [user.id]: currentAccess[user.id].includes(
+                          "roma-centro"
+                        )
+                          ? currentAccess[user.id]
+                          : [...currentAccess[user.id], "roma-centro"]
+                      }));
+                      updateLastUpdated(user.id);
+                    }}
+                  >
+                    Assegna ristorante
+                  </button>
+                </div>
+
+                <div className="rounded-2xl bg-black/[0.04] p-3">
+                  <p className="text-xs font-black uppercase text-black/45">
+                    Ultimo aggiornamento
+                  </p>
+                  <p className="mt-2 break-words text-sm font-bold text-black/65">
+                    {lastUpdated[user.id]}
+                  </p>
+                </div>
+
+                <button
+                  className="h-12 w-full rounded-xl bg-black px-4 text-sm font-black text-white"
+                  onClick={() => setSelectedUserId(user.id)}
+                >
+                  Dettagli
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="hidden overflow-hidden rounded-2xl bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)] lg:block">
           <div className="max-h-[70vh] overflow-auto">
             <table className="w-full min-w-[980px] border-collapse text-left">
               <thead className="sticky top-0 z-10 bg-[#ff6b00] text-white shadow-sm">
@@ -394,13 +523,13 @@ export default function AdminUsersPage() {
                 <p className="text-xs font-black uppercase text-[#ff6b00]">
                   Dettagli utente
                 </p>
-                <h2 className="mt-2 text-3xl font-black">
+                <h2 className="mt-2 break-words text-3xl font-black">
                   {selectedUser.nome}
                 </h2>
               </div>
 
               <button
-                className="h-11 rounded-xl bg-black px-4 text-sm font-black text-white"
+                className="h-12 w-full rounded-xl bg-black px-4 text-sm font-black text-white sm:w-auto"
                 onClick={() => setSelectedUserId(null)}
               >
                 Chiudi dettagli
@@ -412,7 +541,9 @@ export default function AdminUsersPage() {
                 <p className="text-xs font-black uppercase text-black/45">
                   Nome
                 </p>
-                <p className="mt-2 text-sm font-black">{selectedUser.nome}</p>
+                <p className="mt-2 break-words text-sm font-black">
+                  {selectedUser.nome}
+                </p>
               </div>
               <div className="rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
@@ -427,7 +558,7 @@ export default function AdminUsersPage() {
                   Ruolo
                 </p>
                 <span
-                  className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-black ${getRoleBadgeClass(
+                  className={`mt-2 inline-flex max-w-full break-all rounded-full px-3 py-1 text-xs font-black ${getRoleBadgeClass(
                     selectedRoles[selectedUser.id]
                   )}`}
                 >
@@ -450,7 +581,7 @@ export default function AdminUsersPage() {
                 <p className="text-xs font-black uppercase text-black/45">
                   ID ristoranti
                 </p>
-                <p className="mt-2 text-sm font-bold leading-6">
+                <p className="mt-2 break-words text-sm font-bold leading-6">
                   {restaurantAccess[selectedUser.id].length > 0
                     ? restaurantAccess[selectedUser.id].join(", ")
                     : "Nessun ristorante"}
@@ -472,11 +603,11 @@ export default function AdminUsersPage() {
                   Zona pericolosa
                 </p>
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm font-bold text-red-900">
+                  <p className="break-words text-sm font-bold text-red-900">
                     Elimina questo utente demo dallo stato locale della UI.
                   </p>
                   <button
-                    className="h-11 rounded-xl bg-red-600 px-4 text-sm font-black text-white"
+                    className="h-12 w-full rounded-xl bg-red-600 px-4 text-sm font-black text-white sm:w-auto"
                     onClick={() => deleteUser(selectedUser.id)}
                   >
                     Elimina utente
