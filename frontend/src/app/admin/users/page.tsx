@@ -47,6 +47,10 @@ function getStatusBadgeClass(status: string) {
     : "bg-red-100 text-red-800";
 }
 
+function getStatusLabel(status: string) {
+  return status === "active" ? "attivo" : "sospeso";
+}
+
 export default function AdminUsersPage() {
   const [managedUsers, setManagedUsers] = useState(users);
   const [roleFilter, setRoleFilter] = useState("all");
@@ -88,7 +92,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const confirmed = window.confirm("Delete this user?");
+    const confirmed = window.confirm("Eliminare questo utente?");
 
     if (!confirmed) {
       return;
@@ -159,7 +163,7 @@ export default function AdminUsersPage() {
       <section className="mx-auto w-full max-w-5xl">
         <div className="mb-6">
           <p className="text-sm font-black uppercase text-[#ff6b00]">
-            Super admin demo
+            Demo super admin
           </p>
           <h1 className="mt-2 text-3xl font-black">Utenti</h1>
         </div>
@@ -167,19 +171,19 @@ export default function AdminUsersPage() {
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           <article className="rounded-2xl bg-white p-4 text-black">
             <p className="text-xs font-black uppercase text-black/45">
-              Total users
+              Utenti totali
             </p>
             <p className="mt-2 text-3xl font-black">{totalUsers}</p>
           </article>
           <article className="rounded-2xl bg-white p-4 text-black">
             <p className="text-xs font-black uppercase text-black/45">
-              Active users
+              Utenti attivi
             </p>
             <p className="mt-2 text-3xl font-black">{activeUsers}</p>
           </article>
           <article className="rounded-2xl bg-white p-4 text-black">
             <p className="text-xs font-black uppercase text-black/45">
-              Suspended users
+              Utenti sospesi
             </p>
             <p className="mt-2 text-3xl font-black">{suspendedUsers}</p>
           </article>
@@ -191,13 +195,13 @@ export default function AdminUsersPage() {
               className="block text-xs font-black uppercase text-black/45"
               htmlFor="user-search"
             >
-              Search
+              Cerca
             </label>
             <input
               className="mt-2 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none placeholder:text-black/35"
               id="user-search"
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search by name or email"
+              placeholder="Cerca per nome o email"
               type="search"
               value={searchQuery}
             />
@@ -208,7 +212,7 @@ export default function AdminUsersPage() {
               className="block text-xs font-black uppercase text-black/45"
               htmlFor="role-filter"
             >
-              Filter by role
+              Filtra per ruolo
             </label>
             <select
               className="mt-2 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black"
@@ -216,7 +220,7 @@ export default function AdminUsersPage() {
               onChange={(event) => setRoleFilter(event.target.value)}
               value={roleFilter}
             >
-              <option value="all">all</option>
+              <option value="all">tutti</option>
               {roleOptions.map((role) => (
                 <option key={role} value={role}>
                   {role}
@@ -233,7 +237,7 @@ export default function AdminUsersPage() {
                 setRoleFilter("all");
               }}
             >
-              Reset filters
+              Reimposta filtri
             </button>
           </div>
         </div>
@@ -253,16 +257,16 @@ export default function AdminUsersPage() {
                     Ruolo
                   </th>
                   <th className="px-5 py-4 text-xs font-black uppercase">
-                    Restaurant Access
+                    Accesso ristoranti
                   </th>
                   <th className="px-5 py-4 text-xs font-black uppercase">
-                    Status
+                    Stato
                   </th>
                   <th className="px-5 py-4 text-xs font-black uppercase">
-                    Last updated
+                    Ultimo aggiornamento
                   </th>
                   <th className="px-5 py-4 text-xs font-black uppercase">
-                    Actions
+                    Azioni
                   </th>
                 </tr>
               </thead>
@@ -317,7 +321,7 @@ export default function AdminUsersPage() {
                         <p className="max-w-[220px] text-sm font-bold leading-5 text-black/65">
                           {restaurantAccess[user.id].length > 0
                             ? restaurantAccess[user.id].join(", ")
-                            : "No restaurants"}
+                            : "Nessun ristorante"}
                         </p>
                         <button
                           className="rounded-xl bg-black px-4 py-2 text-xs font-black text-white"
@@ -333,7 +337,7 @@ export default function AdminUsersPage() {
                             updateLastUpdated(user.id);
                           }}
                         >
-                          Assign Restaurant
+                          Assegna ristorante
                         </button>
                       </div>
                     </td>
@@ -344,7 +348,7 @@ export default function AdminUsersPage() {
                             userStatuses[user.id]
                           )}`}
                         >
-                          {userStatuses[user.id]}
+                          {getStatusLabel(userStatuses[user.id])}
                         </span>
                         <button
                           className="rounded-xl bg-[#ff6b00] px-4 py-2 text-xs font-black text-white"
@@ -360,8 +364,8 @@ export default function AdminUsersPage() {
                           }}
                         >
                           {userStatuses[user.id] === "active"
-                            ? "Suspend"
-                            : "Activate"}
+                            ? "Sospendi"
+                            : "Attiva"}
                         </button>
                       </div>
                     </td>
@@ -373,7 +377,7 @@ export default function AdminUsersPage() {
                         className="rounded-xl bg-black px-4 py-2 text-xs font-black text-white"
                         onClick={() => setSelectedUserId(user.id)}
                       >
-                        View details
+                        Dettagli
                       </button>
                     </td>
                   </tr>
@@ -388,7 +392,7 @@ export default function AdminUsersPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase text-[#ff6b00]">
-                  User details
+                  Dettagli utente
                 </p>
                 <h2 className="mt-2 text-3xl font-black">
                   {selectedUser.nome}
@@ -399,7 +403,7 @@ export default function AdminUsersPage() {
                 className="h-11 rounded-xl bg-black px-4 text-sm font-black text-white"
                 onClick={() => setSelectedUserId(null)}
               >
-                Close details
+                Chiudi dettagli
               </button>
             </div>
 
@@ -432,29 +436,29 @@ export default function AdminUsersPage() {
               </div>
               <div className="rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
-                  Status
+                  Stato
                 </p>
                 <span
                   className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-black ${getStatusBadgeClass(
                     userStatuses[selectedUser.id]
                   )}`}
                 >
-                  {userStatuses[selectedUser.id]}
+                  {getStatusLabel(userStatuses[selectedUser.id])}
                 </span>
               </div>
               <div className="rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
-                  Restaurant IDs
+                  ID ristoranti
                 </p>
                 <p className="mt-2 text-sm font-bold leading-6">
                   {restaurantAccess[selectedUser.id].length > 0
                     ? restaurantAccess[selectedUser.id].join(", ")
-                    : "No restaurants"}
+                    : "Nessun ristorante"}
                 </p>
               </div>
               <div className="rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
-                  Last updated
+                  Ultimo aggiornamento
                 </p>
                 <p className="mt-2 text-sm font-bold">
                   {lastUpdated[selectedUser.id]}
@@ -465,17 +469,17 @@ export default function AdminUsersPage() {
             {canDeleteSelectedUser && (
               <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
                 <p className="text-xs font-black uppercase text-red-700">
-                  Danger zone
+                  Zona pericolosa
                 </p>
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-bold text-red-900">
-                    Delete this demo user from the local UI state.
+                    Elimina questo utente demo dallo stato locale della UI.
                   </p>
                   <button
                     className="h-11 rounded-xl bg-red-600 px-4 text-sm font-black text-white"
                     onClick={() => deleteUser(selectedUser.id)}
                   >
-                    Delete user
+                    Elimina utente
                   </button>
                 </div>
               </div>

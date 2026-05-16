@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const adminLinks = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/users", label: "Users" }
+  { href: "/admin", label: "Pannello" },
+  { href: "/admin/users", label: "Utenti" }
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

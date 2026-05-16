@@ -29,11 +29,13 @@ export default function AdminPage() {
               <div className="flex h-full flex-col justify-between gap-5">
                 <div>
                   <p className="text-xs font-black uppercase text-[#ff6b00]">
-                    Platform controls
+                    Controlli piattaforma
                   </p>
-                  <h3 className="mt-2 text-xl font-black">Users and access</h3>
+                  <h3 className="mt-2 text-xl font-black">
+                    Utenti e accessi
+                  </h3>
                   <p className="mt-2 text-sm font-bold leading-6 text-white/70">
-                    Manage platform users, roles and access
+                    Gestisci utenti, ruoli e accessi della piattaforma
                   </p>
                 </div>
 
@@ -42,7 +44,7 @@ export default function AdminPage() {
                     /admin/users
                   </span>
                   <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
-                    Open
+                    Apri
                   </span>
                 </div>
               </div>
