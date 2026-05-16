@@ -147,7 +147,7 @@ export default function AdminUsersPage() {
           return matchesRole && matchesSearch;
         });
   const selectedUser = selectedUserId
-    ? managedUsers.find((user) => user.id === selectedUserId)
+    ? managedUsers.find((user) => user.id === selectedUserId) ?? null
     : null;
   const canDeleteSelectedUser =
     selectedUser !== null &&
