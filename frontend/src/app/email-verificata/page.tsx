@@ -40,9 +40,6 @@ export default function EmailVerificataPage() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs font-bold text-white/35">
-          Demo UI — verifica email non ancora attiva
-        </p>
       </div>
     </main>
   );

@@ -30,6 +30,7 @@ async function main() {
         password,
         role: 'super_admin',
         suspended: false,
+        emailVerified: new Date(),
       },
       create: {
         email,
@@ -37,6 +38,7 @@ async function main() {
         password,
         role: 'super_admin',
         suspended: false,
+        emailVerified: new Date(),
       },
     })
 

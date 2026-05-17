@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email.toLowerCase().trim() },
         })
 
-        if (!user || !user.password || user.suspended) return null
+        if (!user || !user.password || user.suspended || !user.emailVerified) return null
 
         const valid = await bcrypt.compare(credentials.password, user.password)
         if (!valid) return null
