@@ -159,8 +159,8 @@ export default function AdminUsersPage() {
     selectedRoles[selectedUser.id] !== "super_admin";
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-5 sm:py-8">
-      <section className="mx-auto w-full max-w-5xl">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-black px-4 py-6 text-white sm:px-5 sm:py-8">
+      <section className="mx-auto w-full max-w-5xl min-w-0">
         <div className="mb-6">
           <p className="text-sm font-black uppercase text-[#ff6b00]">
             Demo super admin
@@ -168,20 +168,20 @@ export default function AdminUsersPage() {
           <h1 className="mt-2 text-3xl font-black">Utenti</h1>
         </div>
 
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
-          <article className="rounded-2xl bg-white p-4 text-black">
+        <div className="mb-6 grid min-w-0 gap-3 sm:grid-cols-3">
+          <article className="min-w-0 overflow-hidden rounded-2xl bg-white p-4 text-black">
             <p className="text-xs font-black uppercase text-black/45">
               Utenti totali
             </p>
             <p className="mt-2 text-3xl font-black">{totalUsers}</p>
           </article>
-          <article className="rounded-2xl bg-white p-4 text-black">
+          <article className="min-w-0 overflow-hidden rounded-2xl bg-white p-4 text-black">
             <p className="text-xs font-black uppercase text-black/45">
               Utenti attivi
             </p>
             <p className="mt-2 text-3xl font-black">{activeUsers}</p>
           </article>
-          <article className="rounded-2xl bg-white p-4 text-black">
+          <article className="min-w-0 overflow-hidden rounded-2xl bg-white p-4 text-black">
             <p className="text-xs font-black uppercase text-black/45">
               Utenti sospesi
             </p>
@@ -189,8 +189,8 @@ export default function AdminUsersPage() {
           </article>
         </div>
 
-        <div className="mb-4 grid gap-3 rounded-2xl bg-white p-4 text-black lg:grid-cols-[1fr_1fr_auto]">
-          <div>
+        <div className="mb-4 grid w-full min-w-0 max-w-full gap-3 overflow-hidden rounded-2xl bg-white p-4 text-black lg:grid-cols-[1fr_1fr_auto]">
+          <div className="min-w-0">
             <label
               className="block text-xs font-black uppercase text-black/45"
               htmlFor="user-search"
@@ -198,7 +198,7 @@ export default function AdminUsersPage() {
               Cerca
             </label>
             <input
-              className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none placeholder:text-black/35"
+              className="mt-2 h-12 w-full min-w-0 max-w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none placeholder:text-black/35"
               id="user-search"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Cerca per nome o email"
@@ -207,7 +207,7 @@ export default function AdminUsersPage() {
             />
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
               className="block text-xs font-black uppercase text-black/45"
               htmlFor="role-filter"
@@ -215,7 +215,7 @@ export default function AdminUsersPage() {
               Filtra per ruolo
             </label>
             <select
-              className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black"
+              className="mt-2 h-12 w-full min-w-0 max-w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black"
               id="role-filter"
               onChange={(event) => setRoleFilter(event.target.value)}
               value={roleFilter}
@@ -229,9 +229,9 @@ export default function AdminUsersPage() {
             </select>
           </div>
 
-          <div className="flex items-end">
+          <div className="flex min-w-0 items-end">
             <button
-              className="h-12 w-full rounded-xl bg-black px-4 text-sm font-black text-white lg:w-auto"
+              className="h-12 w-full min-w-0 rounded-xl bg-black px-4 text-sm font-black text-white lg:w-auto"
               onClick={() => {
                 setSearchQuery("");
                 setRoleFilter("all");
@@ -242,10 +242,10 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:hidden">
+        <div className="grid w-full min-w-0 max-w-full gap-4 overflow-hidden lg:hidden">
           {filteredUsers.map((user) => (
             <article
-              className="rounded-2xl bg-white p-4 text-black shadow-[0_18px_45px_rgba(0,0,0,0.22)]"
+              className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl bg-white p-4 text-black shadow-[0_18px_45px_rgba(0,0,0,0.22)]"
               key={user.id}
             >
               <div className="min-w-0">
@@ -257,8 +257,8 @@ export default function AdminUsersPage() {
                 </p>
               </div>
 
-              <div className="mt-4 grid gap-3">
-                <div className="rounded-2xl bg-black/[0.04] p-3">
+              <div className="mt-4 grid min-w-0 gap-3">
+                <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-3">
                   <p className="text-xs font-black uppercase text-black/45">
                     Ruolo
                   </p>
@@ -270,7 +270,7 @@ export default function AdminUsersPage() {
                     {selectedRoles[user.id]}
                   </span>
                   <select
-                    className="mt-3 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none"
+                    className="mt-3 h-12 w-full min-w-0 max-w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-black outline-none"
                     value={selectedRoles[user.id]}
                     onChange={(event) => {
                       setSelectedRoles((currentRoles) => ({
@@ -294,7 +294,7 @@ export default function AdminUsersPage() {
                   </select>
                 </div>
 
-                <div className="rounded-2xl bg-black/[0.04] p-3">
+                <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-3">
                   <p className="text-xs font-black uppercase text-black/45">
                     Stato
                   </p>
@@ -306,7 +306,7 @@ export default function AdminUsersPage() {
                     {getStatusLabel(userStatuses[user.id])}
                   </span>
                   <button
-                    className="mt-3 h-12 w-full rounded-xl bg-[#ff6b00] px-4 text-sm font-black text-white"
+                    className="mt-3 h-12 w-full min-w-0 rounded-xl bg-[#ff6b00] px-4 text-sm font-black text-white"
                     onClick={() => {
                       setUserStatuses((currentStatuses) => ({
                         ...currentStatuses,
@@ -324,7 +324,7 @@ export default function AdminUsersPage() {
                   </button>
                 </div>
 
-                <div className="rounded-2xl bg-black/[0.04] p-3">
+                <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-3">
                   <p className="text-xs font-black uppercase text-black/45">
                     Accesso ristoranti
                   </p>
@@ -334,7 +334,7 @@ export default function AdminUsersPage() {
                       : "Nessun ristorante"}
                   </p>
                   <button
-                    className="mt-3 h-12 w-full rounded-xl bg-black px-4 text-sm font-black text-white"
+                    className="mt-3 h-12 w-full min-w-0 rounded-xl bg-black px-4 text-sm font-black text-white"
                     onClick={() => {
                       setRestaurantAccess((currentAccess) => ({
                         ...currentAccess,
@@ -351,7 +351,7 @@ export default function AdminUsersPage() {
                   </button>
                 </div>
 
-                <div className="rounded-2xl bg-black/[0.04] p-3">
+                <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-3">
                   <p className="text-xs font-black uppercase text-black/45">
                     Ultimo aggiornamento
                   </p>
@@ -361,7 +361,7 @@ export default function AdminUsersPage() {
                 </div>
 
                 <button
-                  className="h-12 w-full rounded-xl bg-black px-4 text-sm font-black text-white"
+                  className="h-12 w-full min-w-0 rounded-xl bg-black px-4 text-sm font-black text-white"
                   onClick={() => setSelectedUserId(user.id)}
                 >
                   Dettagli
@@ -371,9 +371,9 @@ export default function AdminUsersPage() {
           ))}
         </div>
 
-        <div className="hidden overflow-hidden rounded-2xl bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)] lg:block">
+        <div className="hidden max-w-full overflow-hidden rounded-2xl bg-white text-black shadow-[0_18px_45px_rgba(0,0,0,0.28)] max-lg:hidden lg:block">
           <div className="max-h-[70vh] overflow-auto">
-            <table className="w-full min-w-[980px] border-collapse text-left">
+            <table className="w-full min-w-0 border-collapse text-left lg:min-w-[980px]">
               <thead className="sticky top-0 z-10 bg-[#ff6b00] text-white shadow-sm">
                 <tr>
                   <th className="px-5 py-4 text-xs font-black uppercase">
@@ -517,9 +517,9 @@ export default function AdminUsersPage() {
         </div>
 
         {selectedUser && (
-          <div className="mt-5 rounded-[1.75rem] border-2 border-[#ff6b00] bg-white p-5 text-black shadow-[0_18px_45px_rgba(255,107,0,0.18)] sm:p-6">
+          <div className="mt-5 w-full min-w-0 max-w-full overflow-hidden rounded-[1.75rem] border-2 border-[#ff6b00] bg-white p-5 text-black shadow-[0_18px_45px_rgba(255,107,0,0.18)] sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-black uppercase text-[#ff6b00]">
                   Dettagli utente
                 </p>
@@ -536,8 +536,8 @@ export default function AdminUsersPage() {
               </button>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl bg-black/[0.04] p-4">
+            <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
                   Nome
                 </p>
@@ -545,7 +545,7 @@ export default function AdminUsersPage() {
                   {selectedUser.nome}
                 </p>
               </div>
-              <div className="rounded-2xl bg-black/[0.04] p-4">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
                   Email
                 </p>
@@ -553,7 +553,7 @@ export default function AdminUsersPage() {
                   {selectedUser.email}
                 </p>
               </div>
-              <div className="rounded-2xl bg-black/[0.04] p-4">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
                   Ruolo
                 </p>
@@ -565,7 +565,7 @@ export default function AdminUsersPage() {
                   {selectedRoles[selectedUser.id]}
                 </span>
               </div>
-              <div className="rounded-2xl bg-black/[0.04] p-4">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
                   Stato
                 </p>
@@ -577,7 +577,7 @@ export default function AdminUsersPage() {
                   {getStatusLabel(userStatuses[selectedUser.id])}
                 </span>
               </div>
-              <div className="rounded-2xl bg-black/[0.04] p-4">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
                   ID ristoranti
                 </p>
@@ -587,7 +587,7 @@ export default function AdminUsersPage() {
                     : "Nessun ristorante"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-black/[0.04] p-4">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-4">
                 <p className="text-xs font-black uppercase text-black/45">
                   Ultimo aggiornamento
                 </p>
