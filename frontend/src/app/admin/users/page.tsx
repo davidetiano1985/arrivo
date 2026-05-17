@@ -1,4 +1,8 @@
+import { getServerSession } from "next-auth";
+
+import { authOptions } from "../../../lib/auth";
 import { prisma } from "../../../lib/prisma";
+import UserActions from "./UserActions";
 
 function getRoleBadgeClass(role: string) {
   if (role === "super_admin") return "bg-[#ff6b00] text-white";
@@ -20,6 +24,9 @@ function formatDate(date: Date) {
 }
 
 export default async function AdminUsersPage() {
+  const session = await getServerSession(authOptions);
+  const currentUserId = (session?.user as { id?: string })?.id ?? "";
+
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
     select: {
@@ -86,7 +93,7 @@ export default async function AdminUsersPage() {
               <div className="mt-4 grid min-w-0 gap-3">
                 <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-3">
                   <p className="text-xs font-black uppercase text-black/45">
-                    Ruolo
+                    Ruolo attuale
                   </p>
                   <span
                     className={`mt-2 inline-flex max-w-full break-all rounded-full px-3 py-1 text-xs font-black ${getRoleBadgeClass(user.role)}`}
@@ -104,6 +111,18 @@ export default async function AdminUsersPage() {
                   >
                     {user.suspended ? "sospeso" : "attivo"}
                   </span>
+                </div>
+
+                <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-3">
+                  <p className="mb-2 text-xs font-black uppercase text-black/45">
+                    Azioni
+                  </p>
+                  <UserActions
+                    currentRole={user.role}
+                    isSelf={user.id === currentUserId}
+                    suspended={user.suspended}
+                    userId={user.id}
+                  />
                 </div>
 
                 <div className="min-w-0 overflow-hidden rounded-2xl bg-black/[0.04] p-3">
@@ -129,6 +148,7 @@ export default async function AdminUsersPage() {
                   <th className="px-5 py-4 text-xs font-black uppercase">Email</th>
                   <th className="px-5 py-4 text-xs font-black uppercase">Ruolo</th>
                   <th className="px-5 py-4 text-xs font-black uppercase">Stato</th>
+                  <th className="px-5 py-4 text-xs font-black uppercase">Azioni</th>
                   <th className="px-5 py-4 text-xs font-black uppercase">Registrato il</th>
                 </tr>
               </thead>
@@ -157,6 +177,14 @@ export default async function AdminUsersPage() {
                       >
                         {user.suspended ? "sospeso" : "attivo"}
                       </span>
+                    </td>
+                    <td className="px-5 py-4 align-middle">
+                      <UserActions
+                        currentRole={user.role}
+                        isSelf={user.id === currentUserId}
+                        suspended={user.suspended}
+                        userId={user.id}
+                      />
                     </td>
                     <td className="px-5 py-4 align-middle text-sm font-bold text-black/65">
                       {formatDate(user.createdAt)}
