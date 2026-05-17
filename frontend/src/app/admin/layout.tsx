@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import AccessoNegato from "../../components/AccessoNegato";
 import { authOptions } from "../../lib/auth";
+import LogoutButton from "./LogoutButton";
 
 type AdminLink = { href: string; label: string; onlySuperAdmin?: boolean };
 
@@ -47,6 +48,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             </Link>
           ))}
         </nav>
+
+        <div className="mt-auto border-t border-white/10 pt-4">
+          <LogoutButton />
+        </div>
       </aside>
 
       <header className="sticky top-0 z-20 border-b border-white/10 bg-black/95 px-4 py-4 backdrop-blur md:hidden">
@@ -64,6 +69,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               {link.href === "/admin" ? "Pannello" : link.label}
             </Link>
           ))}
+          <LogoutButton mobile />
         </nav>
       </header>
 
