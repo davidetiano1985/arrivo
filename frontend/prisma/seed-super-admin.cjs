@@ -2,7 +2,6 @@
 
 const { PrismaClient } = require('@prisma/client')
 const { PrismaPg } = require('@prisma/adapter-pg')
-const { Pool } = require('pg')
 const bcrypt = require('bcryptjs')
 
 const BCRYPT_ROUNDS = 12
@@ -18,8 +17,7 @@ async function main() {
   if (rawPassword.length < 12) throw new Error('SUPER_ADMIN_PASSWORD deve avere almeno 12 caratteri')
   if (!dbUrl) throw new Error('DATABASE_URL è obbligatorio')
 
-  const pool = new Pool({ connectionString: dbUrl })
-  const adapter = new PrismaPg(pool)
+  const adapter = new PrismaPg({ connectionString: dbUrl })
   const prisma = new PrismaClient({ adapter })
 
   try {
@@ -45,7 +43,6 @@ async function main() {
     console.log(`Super admin pronto: ${user.email} | ruolo: ${user.role}`)
   } finally {
     await prisma.$disconnect()
-    await pool.end()
   }
 }
 
