@@ -1,0 +1,162 @@
+import Link from "next/link";
+
+const tipiLocale = [
+  "Ristorante",
+  "Creperia",
+  "Cornetteria",
+  "Bakery / Pasticceria",
+  "Pub / Birreria",
+  "Sushi Bar",
+  "Street Food",
+  "Altro",
+];
+
+export default function RegistratiLocalePage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <Link
+            className="text-2xl font-black tracking-[0.16em] text-white"
+            href="/"
+          >
+            ARRIVO
+          </Link>
+          <p className="mt-1 text-xs font-bold uppercase text-white/45">
+            Food delivery premium
+          </p>
+        </div>
+
+        <div className="rounded-[2rem] bg-white p-6 text-black shadow-[0_24px_70px_rgba(0,0,0,0.5)]">
+          <p className="text-xs font-black uppercase text-[#ff6b00]">
+            Per gestori
+          </p>
+          <h1 className="mt-2 text-2xl font-black">Registra il tuo locale</h1>
+          <p className="mt-1 text-sm font-bold text-black/55">
+            Il locale sarà visibile su Arrivo solo dopo l&apos;approvazione del
+            team.
+          </p>
+
+          <div className="mt-6 grid gap-4">
+            <div>
+              <label
+                className="block text-xs font-black uppercase text-black/45"
+                htmlFor="nome-attivita"
+              >
+                Nome attività
+              </label>
+              <input
+                className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
+                id="nome-attivita"
+                name="nome-attivita"
+                placeholder="es. Pizzeria Napoli"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-black uppercase text-black/45"
+                htmlFor="tipo-attivita"
+              >
+                Tipo attività
+              </label>
+              <select
+                className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold text-black outline-none focus:border-[#ff6b00]"
+                id="tipo-attivita"
+                name="tipo-attivita"
+              >
+                <option value="">Seleziona tipo</option>
+                {tipiLocale.map((tipo) => (
+                  <option key={tipo} value={tipo.toLowerCase()}>
+                    {tipo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-black uppercase text-black/45"
+                htmlFor="citta"
+              >
+                Città
+              </label>
+              <input
+                className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
+                id="citta"
+                name="citta"
+                placeholder="es. Milano"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-black uppercase text-black/45"
+                htmlFor="email-referente"
+              >
+                Email referente
+              </label>
+              <input
+                autoComplete="email"
+                className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
+                id="email-referente"
+                name="email-referente"
+                placeholder="referente@locale.it"
+                type="email"
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-black uppercase text-black/45"
+                htmlFor="telefono"
+              >
+                Telefono
+              </label>
+              <input
+                autoComplete="tel"
+                className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
+                id="telefono"
+                name="telefono"
+                placeholder="+39 02 1234567"
+                type="tel"
+              />
+            </div>
+
+            <button
+              className="h-12 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white"
+              type="button"
+            >
+              Registra locale
+            </button>
+            <p className="text-center text-xs font-bold text-black/45">
+              Riceverai conferma dell&apos;invio della richiesta
+            </p>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-xs font-black uppercase text-amber-700">
+              Cosa succede dopo
+            </p>
+            <p className="mt-2 text-sm font-bold text-amber-900">
+              Riceverai una email di conferma. Il team Arrivo verificherà le
+              informazioni e attiverà il locale entro 48 ore.
+            </p>
+          </div>
+
+          <p className="mt-5 text-center text-sm font-bold text-black/55">
+            <Link className="font-black text-black" href="/registrati">
+              ← Torna alla registrazione cliente
+            </Link>
+          </p>
+        </div>
+
+        <p className="mt-6 text-center text-xs font-bold text-white/35">
+          Demo UI — registrazione non ancora attiva
+        </p>
+      </div>
+    </main>
+  );
+}

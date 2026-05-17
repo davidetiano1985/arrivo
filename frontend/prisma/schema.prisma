@@ -14,9 +14,11 @@ datasource db {
 // ─── Enum ────────────────────────────────────────────────────────────────────
 
 enum UserRole {
-  user
-  restaurant_admin
   super_admin
+  gestore_locale
+  manager
+  staff
+  cliente
 }
 
 enum RestaurantStatus {
@@ -72,7 +74,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String? // null per utenti Google OAuth
-  role          UserRole  @default(user)
+  role          UserRole  @default(cliente)
   suspended     Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -88,6 +90,7 @@ model Restaurant {
   id          String           @id @default(cuid())
   name        String
   slug        String           @unique
+  tipo        String?
   description String?          @db.Text
   address     String?
   city        String?

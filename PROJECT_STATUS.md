@@ -235,6 +235,80 @@ Cartelle importanti:
 - `backend`: presente ma non collegato al frontend demo.
 - `database`: presente ma non collegato al frontend demo.
 
+## Stato schema Prisma
+
+File principali:
+
+```text
+frontend/prisma/schema.prisma
+frontend/prisma.config.ts
+```
+
+Lo schema Prisma esiste ed è allineato alle decisioni architetturali attuali.
+
+### Stato attuale
+
+- schema scritto e aggiornato
+- `prisma.config.ts` creato (Prisma 7)
+- `npm install` NON ancora eseguito in locale con i nuovi pacchetti
+- migrate NON ancora eseguita
+- database VPS NON ancora toccato
+- nessuna connessione al frontend demo
+
+### Configurazione Prisma 7
+
+```text
+frontend/prisma.config.ts  ← DATABASE_URL letta qui
+frontend/prisma/schema.prisma  ← NON ha url nel datasource (corretto Prisma 7)
+```
+
+Regola importante: `schema.prisma` NON deve avere `url` nel datasource.
+`DATABASE_URL` viene letta esclusivamente da `prisma.config.ts`.
+
+### Comandi per la futura migrate sulla VPS
+
+```bash
+cd /root/arrivo/frontend
+npm install
+npx prisma generate
+npx prisma migrate deploy
+```
+
+NON usare `prisma migrate dev` in produzione.
+NON eseguire migrate senza verificare che il DB sia vergine.
+
+### Enum UserRole (definitivo)
+
+```prisma
+enum UserRole {
+  super_admin
+  gestore_locale
+  manager
+  staff
+  cliente        // default automatico alla registrazione
+}
+```
+
+### Model User
+
+- `role UserRole @default(cliente)` — ruolo iniziale automatico corretto
+- `emailVerified DateTime?` — compatibile NextAuth
+- `suspended Boolean @default(false)` — coerente con stato UI demo
+- `password String?` — null per OAuth Google
+
+### Model Restaurant
+
+- nome `Restaurant` mantenuto per ora (non rinominare in `Locale` prima della prima migrate)
+- campo `tipo String?` aggiunto per classificare il tipo di locale food
+  (ristorante, creperia, bakery, pub, sushi bar, street food ecc.)
+- `status RestaurantStatus @default(pending)` — coerente con flusso approvazione
+
+### Nota importante
+
+Il model si chiama ancora `Restaurant` internamente.
+NON rinominare in `Locale` prima di decidere quando fare la prima migrate.
+Rinominare dopo dati presenti richiede migrazione custom.
+
 ## Stato backend
 
 Le cartelle `backend/` e `database/` esistono ma non sono ancora collegate
@@ -259,20 +333,28 @@ File principale:
 frontend/src/data/users.ts
 ```
 
-Ruoli demo presenti nei dati:
+### Ruoli ufficiali (nomenclatura definitiva)
 
-- `user`
-- `restaurant_admin`
-- `super_admin`
+| Ruolo           | Descrizione                                      |
+|-----------------|--------------------------------------------------|
+| `super_admin`   | Amministratore piattaforma                       |
+| `gestore_locale`| Proprietario/gestore del locale food             |
+| `manager`       | Manager operativo del locale                     |
+| `staff`         | Personale del locale                             |
+| `cliente`       | Utente finale (ruolo iniziale automatico)        |
 
-Ruoli disponibili nella select UI della pagina utenti:
+### Decisione architetturale: sistema utenti unificato
 
-- `super_admin`
-- `admin`
-- `manager`
-- `staff`
+- tutti gli utenti usano la stessa registrazione e lo stesso login
+- al momento della registrazione il ruolo assegnato automaticamente e `cliente`
+- il `super_admin` puo cambiare il ruolo di qualsiasi utente dal pannello admin
+- al login successivo ogni utente vede il pannello corretto in base al ruolo assegnato
 
-Nota importante:
+Motivo: Arrivo supporta qualsiasi locale food (ristoranti, creperie, cornetterie,
+bakery, pub, sushi bar, street food ecc.), quindi i ruoli devono essere generici
+e non legati a un tipo specifico di locale.
+
+### Stato attuale ruoli (demo)
 
 - i ruoli modificati nella pagina `/admin/users` aggiornano solo lo stato locale
   React della pagina.
@@ -280,7 +362,7 @@ Nota importante:
 - non esiste ancora un modello permessi reale.
 - non esiste ancora autenticazione reale.
 
-Utente super admin demo richiesto:
+Utente super admin demo:
 
 ```text
 Nome: Davide Tiano
@@ -524,8 +606,8 @@ Prossimi step consigliati, in ordine prudente:
    - verificare testi lunghi, email e bottoni
 
 2. Stabilizzare il modello dati frontend
-   - allineare ruoli demo e ruoli UI
-   - decidere nomenclatura finale: `restaurant_admin` oppure `admin`
+   - [x] ruoli allineati tra dati demo e UI
+   - [x] nomenclatura definitiva decisa (vedi sezione "Sistema ruoli attuale")
    - definire tipi condivisi per utenti e ristoranti
 
 3. Stabilizzare navigazione admin minima
@@ -556,7 +638,7 @@ Prossimi step consigliati, in ordine prudente:
 
 8. Evolvere pannelli operativi
    - super admin
-   - restaurant admin
+   - gestore locale
    - manager
    - staff
 

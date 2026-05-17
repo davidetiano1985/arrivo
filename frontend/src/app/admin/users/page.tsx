@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { users } from "../../../data/users";
 
-const roleOptions = ["super_admin", "admin", "manager", "staff"];
+const roleOptions = ["super_admin", "gestore_locale", "manager", "staff", "cliente"];
 const demoLastUpdatedDates = [
   "17/05/2026 09:00",
   "17/05/2026 09:15",
@@ -26,7 +26,7 @@ function getRoleBadgeClass(role: string) {
     return "bg-[#ff6b00] text-white";
   }
 
-  if (role === "admin") {
+  if (role === "gestore_locale") {
     return "bg-black text-white";
   }
 
@@ -38,17 +38,21 @@ function getRoleBadgeClass(role: string) {
     return "bg-emerald-100 text-emerald-800";
   }
 
+  if (role === "cliente") {
+    return "bg-gray-100 text-gray-700";
+  }
+
   return "bg-black/10 text-black";
 }
 
 function getStatusBadgeClass(status: string) {
-  return status === "active"
+  return status === "attivo"
     ? "bg-emerald-100 text-emerald-800"
     : "bg-red-100 text-red-800";
 }
 
 function getStatusLabel(status: string) {
-  return status === "active" ? "attivo" : "sospeso";
+  return status === "attivo" ? "attivo" : "sospeso";
 }
 
 export default function AdminUsersPage() {
@@ -61,7 +65,7 @@ export default function AdminUsersPage() {
       Object.fromEntries(users.map((user) => [user.id, user.ruolo]))
   );
   const [userStatuses, setUserStatuses] = useState<Record<string, string>>(
-    () => Object.fromEntries(users.map((user) => [user.id, "active"]))
+    () => Object.fromEntries(users.map((user) => [user.id, user.stato]))
   );
   const [restaurantAccess, setRestaurantAccess] = useState<
     Record<string, string[]>
@@ -125,10 +129,10 @@ export default function AdminUsersPage() {
   };
   const totalUsers = managedUsers.length;
   const activeUsers = managedUsers.filter(
-    (user) => userStatuses[user.id] === "active"
+    (user) => userStatuses[user.id] === "attivo"
   ).length;
   const suspendedUsers = managedUsers.filter(
-    (user) => userStatuses[user.id] === "suspended"
+    (user) => userStatuses[user.id] === "sospeso"
   ).length;
   const filteredUsers =
     roleFilter === "all"
@@ -311,14 +315,14 @@ export default function AdminUsersPage() {
                       setUserStatuses((currentStatuses) => ({
                         ...currentStatuses,
                         [user.id]:
-                          currentStatuses[user.id] === "active"
-                            ? "suspended"
-                            : "active"
+                          currentStatuses[user.id] === "attivo"
+                            ? "sospeso"
+                            : "attivo"
                       }));
                       updateLastUpdated(user.id);
                     }}
                   >
-                    {userStatuses[user.id] === "active"
+                    {userStatuses[user.id] === "attivo"
                       ? "Sospendi"
                       : "Attiva"}
                   </button>
@@ -485,14 +489,14 @@ export default function AdminUsersPage() {
                             setUserStatuses((currentStatuses) => ({
                               ...currentStatuses,
                               [user.id]:
-                                currentStatuses[user.id] === "active"
-                                  ? "suspended"
-                                  : "active"
+                                currentStatuses[user.id] === "attivo"
+                                  ? "sospeso"
+                                  : "attivo"
                             }));
                             updateLastUpdated(user.id);
                           }}
                         >
-                          {userStatuses[user.id] === "active"
+                          {userStatuses[user.id] === "attivo"
                             ? "Sospendi"
                             : "Attiva"}
                         </button>

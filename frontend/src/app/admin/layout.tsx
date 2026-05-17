@@ -1,12 +1,30 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-const adminLinks = [
+import AccessoNegato from "../../components/AccessoNegato";
+import { currentDemoUser } from "../../data/currentUser";
+
+type AdminLink = { href: string; label: string; onlySuperAdmin?: boolean };
+
+const adminLinks: AdminLink[] = [
   { href: "/admin", label: "Pannello" },
-  { href: "/admin/users", label: "Utenti" }
+  { href: "/admin/users", label: "Utenti", onlySuperAdmin: true }
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  if (!currentDemoUser) {
+    return <AccessoNegato tipo="non_autenticato" />;
+  }
+
+  if (currentDemoUser.ruolo !== "super_admin") {
+    return <AccessoNegato tipo="non_autorizzato" ruolo={currentDemoUser.ruolo} />;
+  }
+
+  const isSuperAdmin = currentDemoUser.ruolo === "super_admin";
+  const visibleLinks = adminLinks.filter(
+    (link) => !link.onlySuperAdmin || isSuperAdmin
+  );
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-black px-6 py-7 md:flex md:flex-col">
@@ -15,7 +33,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </Link>
 
         <nav className="mt-8 grid gap-2">
-          {adminLinks.map((link) => (
+          {visibleLinks.map((link) => (
             <Link
               className="rounded-2xl px-4 py-3 text-sm font-black text-white/70 transition hover:bg-[#ff6b00] hover:text-black"
               href={link.href}
@@ -33,7 +51,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </Link>
 
         <nav className="mt-4 flex flex-wrap gap-2">
-          {adminLinks.map((link) => (
+          {visibleLinks.map((link) => (
             <Link
               className="rounded-full border border-white/10 px-4 py-2 text-sm font-black text-white/75 transition hover:border-[#ff6b00] hover:text-[#ff6b00]"
               href={link.href}

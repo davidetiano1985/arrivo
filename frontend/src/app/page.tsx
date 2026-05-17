@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { currentDemoUser } from "../data/currentUser";
 import { restaurants } from "../data/restaurants";
 
 export default function Home() {
@@ -14,9 +17,27 @@ export default function Home() {
             </p>
           </div>
 
-          <button className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-black text-black">
-            Milano
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
+              Milano
+            </button>
+            <Link
+              className="rounded-full bg-[#ff6b00] px-4 py-2 text-sm font-black text-black"
+              href={
+                !currentDemoUser
+                  ? "/login"
+                  : currentDemoUser.ruolo === "super_admin"
+                    ? "/admin"
+                    : "/"
+              }
+            >
+              {!currentDemoUser
+                ? "Accedi"
+                : currentDemoUser.ruolo === "super_admin"
+                  ? "Admin"
+                  : "Profilo"}
+            </Link>
+          </div>
         </header>
 
         <section className="px-4 pt-6 sm:px-5">
