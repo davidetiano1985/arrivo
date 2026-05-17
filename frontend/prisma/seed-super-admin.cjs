@@ -3,7 +3,7 @@ const path = require("path");
 const { PrismaClient, Prisma } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 
-const prisma = new PrismaClient();
+let prisma = null;
 
 const SUPER_ADMIN_ROLE = "super_admin";
 const BCRYPT_ROUNDS = 12;
@@ -14,6 +14,22 @@ function readRequiredText(name) {
 
   if (!value) {
     throw new Error(`${name} is required to seed the super admin.`);
+  }
+
+  return value;
+}
+
+function readDatabaseUrl() {
+  const value = process.env.DATABASE_URL?.trim();
+
+  if (!value) {
+    throw new Error("DATABASE_URL is required to seed the super admin.");
+  }
+
+  try {
+    new URL(value);
+  } catch {
+    throw new Error("DATABASE_URL must be a valid database connection URL.");
   }
 
   return value;
@@ -54,7 +70,7 @@ function fieldsFromPrismaDmmf() {
 }
 
 function fieldsFromRuntimeDataModel() {
-  const fields = prisma._runtimeDataModel?.models?.User?.fields;
+  const fields = prisma?._runtimeDataModel?.models?.User?.fields;
 
   if (!fields) return null;
 
@@ -133,6 +149,8 @@ async function passwordDataFor(userFields, password, existingUser) {
 
 async function main() {
   const input = readSeedInput();
+  const databaseUrl = readDatabaseUrl();
+  prisma = new PrismaClient({ datasourceUrl: databaseUrl });
   const userFields = getUserFields();
   const existingUser = await prisma.user.findFirst({
     where: { email: input.email },
@@ -169,5 +187,7 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    if (prisma) {
+      await prisma.$disconnect();
+    }
   });
