@@ -122,6 +122,13 @@ function getUserFields() {
   return fields;
 }
 
+async function createPrismaClient(databaseUrl) {
+  const { PrismaPg } = await import("@prisma/adapter-pg");
+  const adapter = new PrismaPg({ connectionString: databaseUrl });
+
+  return new PrismaClient({ adapter });
+}
+
 async function passwordMatches(password, hash) {
   if (!hash) return false;
 
@@ -150,7 +157,7 @@ async function passwordDataFor(userFields, password, existingUser) {
 async function main() {
   const input = readSeedInput();
   const databaseUrl = readDatabaseUrl();
-  prisma = new PrismaClient({ datasourceUrl: databaseUrl });
+  prisma = await createPrismaClient(databaseUrl);
   const userFields = getUserFields();
   const existingUser = await prisma.user.findFirst({
     where: { email: input.email },
