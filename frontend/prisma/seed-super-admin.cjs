@@ -14,7 +14,10 @@ async function main() {
   if (!rawPassword) throw new Error('SUPER_ADMIN_PASSWORD è obbligatorio')
   if (rawPassword.length < 12) throw new Error('SUPER_ADMIN_PASSWORD deve avere almeno 12 caratteri')
 
-  const prisma = new PrismaClient()
+  const dbUrl = process.env.DATABASE_URL
+  if (!dbUrl) throw new Error('DATABASE_URL è obbligatorio')
+
+  const prisma = new PrismaClient({ datasourceUrl: dbUrl })
 
   try {
     const password = await bcrypt.hash(rawPassword, BCRYPT_ROUNDS)
