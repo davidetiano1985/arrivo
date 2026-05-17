@@ -2,6 +2,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import GoogleProvider from 'next-auth/providers/google'
 
 import { prisma } from './prisma'
 
@@ -10,6 +11,12 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // allows linking Google to an existing email/password account
+      allowDangerousEmailAccountLinking: true,
+    }),
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -38,10 +45,32 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google' && user.id) {
+        const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+        if (dbUser?.suspended) return false
+        // Google confirms email ownership — auto-verify if not already done
+        if (!dbUser?.emailVerified) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { emailVerified: new Date() },
+          })
+        }
+      }
+      return true
+    },
+    async jwt({ token, user }) {
       if (user) {
-        token.role = (user as unknown as { role: string }).role
         token.id = user.id
+        const role = (user as { role?: string }).role
+        if (role) {
+          // credentials sign-in: role is already in the user object
+          token.role = role
+        } else if (user.id) {
+          // OAuth sign-in: role is not forwarded, fetch from DB
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+          token.role = dbUser?.role ?? 'cliente'
+        }
       }
       return token
     },
