@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import NextAuthSessionProvider from "../components/SessionProvider";
+
 export const metadata: Metadata = {
   title: "Arrivo",
   description: "Arrivo frontend"
@@ -13,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it">
-      <body>{children}</body>
+      <body>
+        <NextAuthSessionProvider>{children}</NextAuthSessionProvider>
+      </body>
     </html>
   );
 }

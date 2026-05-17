@@ -1,6 +1,39 @@
+'use client'
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { useState } from "react";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errore, setErrore] = useState("");
+  const [caricamento, setCaricamento] = useState(false);
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setErrore("");
+    setCaricamento(true);
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    setCaricamento(false);
+
+    if (!result || result.error) {
+      setErrore("Email o password non corretti.");
+      return;
+    }
+
+    router.push("/admin");
+    router.refresh();
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
       <div className="w-full max-w-sm">
@@ -22,7 +55,7 @@ export default function LoginPage() {
             Inserisci le tue credenziali per continuare.
           </p>
 
-          <div className="mt-6 grid gap-4">
+          <form className="mt-6 grid gap-4" onSubmit={handleLogin}>
             <div>
               <label
                 className="block text-xs font-black uppercase text-black/45"
@@ -35,8 +68,11 @@ export default function LoginPage() {
                 className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
                 id="email"
                 name="email"
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="la-tua@email.com"
+                required
                 type="email"
+                value={email}
               />
             </div>
 
@@ -52,32 +88,28 @@ export default function LoginPage() {
                 className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
                 id="password"
                 name="password"
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                required
                 type="password"
+                value={password}
               />
             </div>
 
+            {errore && (
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-600">
+                {errore}
+              </p>
+            )}
+
             <button
-              className="h-12 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white"
-              type="button"
+              className="h-12 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white disabled:opacity-60"
+              disabled={caricamento}
+              type="submit"
             >
-              Accedi
+              {caricamento ? "Accesso in corso…" : "Accedi"}
             </button>
-          </div>
-
-          <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-black/10" />
-            <span className="text-xs font-bold text-black/45">oppure</span>
-            <div className="h-px flex-1 bg-black/10" />
-          </div>
-
-          <button
-            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border-2 border-black/10 text-sm font-black text-black transition hover:border-[#ff6b00]"
-            type="button"
-          >
-            <span className="font-black text-[#4285f4]">G</span>
-            Continua con Google
-          </button>
+          </form>
 
           <p className="mt-5 text-center text-sm font-bold text-black/55">
             Non hai un account?{" "}
@@ -86,10 +118,6 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-
-        <p className="mt-6 text-center text-xs font-bold text-white/35">
-          Demo UI — autenticazione non ancora attiva
-        </p>
       </div>
     </main>
   );

@@ -1,28 +1,32 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 import type { ReactNode } from "react";
 
 import AccessoNegato from "../../components/AccessoNegato";
-import { currentDemoUser } from "../../data/currentUser";
+import { authOptions } from "../../lib/auth";
 
 type AdminLink = { href: string; label: string; onlySuperAdmin?: boolean };
 
 const adminLinks: AdminLink[] = [
   { href: "/admin", label: "Pannello" },
-  { href: "/admin/users", label: "Utenti", onlySuperAdmin: true }
+  { href: "/admin/users", label: "Utenti", onlySuperAdmin: true },
 ];
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
-  if (!currentDemoUser) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
     return <AccessoNegato tipo="non_autenticato" />;
   }
 
-  if (currentDemoUser.ruolo !== "super_admin") {
-    return <AccessoNegato tipo="non_autorizzato" ruolo={currentDemoUser.ruolo} />;
+  const role = (session.user as { role: string }).role;
+
+  if (role !== "super_admin") {
+    return <AccessoNegato tipo="non_autorizzato" ruolo={role} />;
   }
 
-  const isSuperAdmin = currentDemoUser.ruolo === "super_admin";
   const visibleLinks = adminLinks.filter(
-    (link) => !link.onlySuperAdmin || isSuperAdmin
+    (link) => !link.onlySuperAdmin || role === "super_admin"
   );
 
   return (
@@ -57,7 +61,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               href={link.href}
               key={link.href}
             >
-              {link.label}
+              {link.href === "/admin" ? "Pannello" : link.label}
             </Link>
           ))}
         </nav>
