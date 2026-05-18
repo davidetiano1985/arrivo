@@ -87,6 +87,21 @@ model User {
   restaurants Restaurant[] // ristoranti di cui è owner
 }
 
+// ─── Richieste registrazione locale ──────────────────────────────────────────
+
+model LocaleRequest {
+  id        String           @id @default(cuid())
+  nome      String
+  tipo      String?
+  citta     String
+  email     String
+  telefono  String?
+  status    RestaurantStatus @default(pending)
+  note      String?          @db.Text
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
 // ─── Ristoranti ──────────────────────────────────────────────────────────────
 
 model Restaurant {

@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+
+import { inviaRichiestaLocale } from './actions'
 
 const tipiLocale = [
   'Ristorante',
@@ -15,17 +17,22 @@ const tipiLocale = [
 ]
 
 export default function RegistratiLocalePage() {
-  const [nome, setNome] = useState('')
-  const [tipo, setTipo] = useState('')
-  const [citta, setCitta] = useState('')
-  const [email, setEmail] = useState('')
-  const [telefono, setTelefono] = useState('')
+  const [errore, setErrore] = useState('')
+  const [isPending, startTransition] = useTransition()
 
-  const corpo = encodeURIComponent(
-    `Salve,\n\nVorrei registrare il mio locale su Arrivo.\n\nNome attività: ${nome || '—'}\nTipo: ${tipo || '—'}\nCittà: ${citta || '—'}\nEmail referente: ${email || '—'}\nTelefono: ${telefono || '—'}\n\nIn attesa di un vostro riscontro,\n${nome || '—'}`
-  )
-
-  const mailtoHref = `mailto:davidetiano@arrivoapp.it?subject=Richiesta%20registrazione%20locale%20%E2%80%94%20${encodeURIComponent(nome || 'Nuovo locale')}&body=${corpo}`
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setErrore('')
+    const formData = new FormData(e.currentTarget)
+    startTransition(async () => {
+      try {
+        const result = await inviaRichiestaLocale(formData)
+        if (result?.error) setErrore(result.error)
+      } catch {
+        setErrore('Errore imprevisto. Riprova o scrivici direttamente via email.')
+      }
+    })
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
@@ -46,22 +53,21 @@ export default function RegistratiLocalePage() {
             Il locale sarà visibile su Arrivo solo dopo l&apos;approvazione del team.
           </p>
 
-          <div className="mt-6 grid gap-4">
+          <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
             <div>
               <label
                 className="block text-xs font-black uppercase text-black/45"
                 htmlFor="nome-attivita"
               >
-                Nome attività
+                Nome attività *
               </label>
               <input
                 className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
                 id="nome-attivita"
                 name="nome-attivita"
-                onChange={(e) => setNome(e.target.value)}
                 placeholder="es. Pizzeria Napoli"
+                required
                 type="text"
-                value={nome}
               />
             </div>
 
@@ -76,8 +82,6 @@ export default function RegistratiLocalePage() {
                 className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold text-black outline-none focus:border-[#ff6b00]"
                 id="tipo-attivita"
                 name="tipo-attivita"
-                onChange={(e) => setTipo(e.target.value)}
-                value={tipo}
               >
                 <option value="">Seleziona tipo</option>
                 {tipiLocale.map((t) => (
@@ -93,16 +97,15 @@ export default function RegistratiLocalePage() {
                 className="block text-xs font-black uppercase text-black/45"
                 htmlFor="citta"
               >
-                Città
+                Città *
               </label>
               <input
                 className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
                 id="citta"
                 name="citta"
-                onChange={(e) => setCitta(e.target.value)}
                 placeholder="es. Milano"
+                required
                 type="text"
-                value={citta}
               />
             </div>
 
@@ -111,17 +114,16 @@ export default function RegistratiLocalePage() {
                 className="block text-xs font-black uppercase text-black/45"
                 htmlFor="email-referente"
               >
-                Email referente
+                Email referente *
               </label>
               <input
                 autoComplete="email"
                 className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
                 id="email-referente"
                 name="email-referente"
-                onChange={(e) => setEmail(e.target.value)}
                 placeholder="referente@locale.it"
+                required
                 type="email"
-                value={email}
               />
             </div>
 
@@ -137,40 +139,52 @@ export default function RegistratiLocalePage() {
                 className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
                 id="telefono"
                 name="telefono"
-                onChange={(e) => setTelefono(e.target.value)}
                 placeholder="+39 02 1234567"
                 type="tel"
-                value={telefono}
               />
             </div>
 
-            <a
-              className="block h-12 w-full rounded-xl bg-[#ff6b00] text-center text-sm font-black text-white leading-[3rem]"
-              href={mailtoHref}
+            {errore && (
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-600">
+                {errore}
+              </p>
+            )}
+
+            <button
+              className="h-12 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white disabled:opacity-60"
+              disabled={isPending}
+              type="submit"
             >
-              Invia richiesta via email →
-            </a>
+              {isPending ? 'Invio in corso…' : 'Invia richiesta'}
+            </button>
+
             <p className="text-center text-xs font-bold text-black/45">
-              Si aprirà la tua app email con tutti i dati precompilati
+              Il team Arrivo ti risponderà entro 48 ore all&apos;email fornita
             </p>
-          </div>
+          </form>
 
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-xs font-black uppercase text-amber-700">Cosa succede dopo</p>
             <p className="mt-2 text-sm font-bold text-amber-900">
-              Riceverai una email di conferma. Il team Arrivo verificherà le informazioni e attiverà il locale entro 48 ore.
+              Il team Arrivo verificherà le informazioni e attiverà il locale entro 48 ore.
             </p>
           </div>
 
-          <p className="mt-5 text-center text-sm font-bold text-black/55">
-            <Link className="font-black text-black" href="/registrati">
+          <div className="mt-5 flex items-center justify-between">
+            <Link className="text-sm font-black text-black" href="/registrati">
               ← Torna alla registrazione cliente
             </Link>
-          </p>
+            <a
+              className="text-xs font-bold text-black/40 transition hover:text-black/70"
+              href="mailto:davidetiano@arrivoapp.it?subject=Richiesta%20registrazione%20locale"
+            >
+              Scrivi via email
+            </a>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-xs font-bold text-white/35">
-          Registrazione partner in fase di attivazione. Riceverai conferma via email.
+          Registrazione partner in fase di attivazione.
         </p>
       </div>
     </main>

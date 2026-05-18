@@ -10,6 +10,71 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+export async function sendAdminNotificationEmail(data: {
+  nome: string
+  tipo: string
+  citta: string
+  email: string
+  telefono: string
+}) {
+  const adminEmail = process.env.SMTP_FROM!
+  const righe = [
+    ['Locale', data.nome],
+    ['Tipo', data.tipo || '—'],
+    ['Città', data.citta],
+    ['Email referente', data.email],
+    ['Telefono', data.telefono || '—'],
+  ]
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: adminEmail,
+    subject: `[Arrivo] Nuova richiesta locale: ${data.nome}`,
+    html: `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="utf-8" /><title>Nuova richiesta locale</title></head>
+<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#000000;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#111111;border-radius:24px;overflow:hidden;">
+          <tr>
+            <td style="background:#000000;padding:28px 40px 20px;border-bottom:1px solid #1a1a1a;">
+              <img src="https://arrivoapp.it/arrivo_logo.svg" alt="Arrivo" width="90" style="display:block;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 40px 28px;">
+              <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ff6b00;">Nuova richiesta locale</p>
+              <h1 style="margin:0 0 24px;font-size:22px;font-weight:900;color:#ffffff;line-height:1.3;">${data.nome}</h1>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+                ${righe.map(([label, val], i) => `
+                <tr style="background:${i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'transparent'};">
+                  <td style="padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.35);width:40%;">${label}</td>
+                  <td style="padding:12px 16px;font-size:13px;font-weight:700;color:#ffffff;">${val}</td>
+                </tr>`).join('')}
+              </table>
+              <div style="margin-top:28px;text-align:center;">
+                <a href="https://arrivoapp.it/admin" style="display:inline-block;background:#ff6b00;color:#ffffff;text-decoration:none;font-size:14px;font-weight:900;padding:14px 36px;border-radius:12px;">
+                  Vai all'admin &rarr;
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+              <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.20);">Arrivo &middot; arrivoapp.it</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+  })
+}
+
 export async function sendVerificationEmail(email: string, token: string, firstName?: string) {
   const url = `${process.env.NEXTAUTH_URL}/api/auth/verify?token=${token}`
   const greeting = firstName ? `Ciao ${firstName}!` : 'Benvenuto su Arrivo!'
