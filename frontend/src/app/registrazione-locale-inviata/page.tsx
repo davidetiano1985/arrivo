@@ -5,14 +5,11 @@ export default function RegistrazioneLocaleInviataPage() {
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <Link
-            className="text-2xl font-black tracking-[0.16em] text-white"
-            href="/"
-          >
-            ARRIVO
+          <Link href="/">
+            <img src="/arrivo_logo.svg" alt="Arrivo" className="h-10 w-auto" />
           </Link>
           <p className="mt-1 text-xs font-bold uppercase text-white/45">
-            Food delivery premium
+            Prenota · Ordina · Arriva
           </p>
         </div>
 
