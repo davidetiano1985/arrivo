@@ -3,7 +3,11 @@ import Link from 'next/link'
 import GoogleSignInButton from '@/components/GoogleSignInButton'
 import RegistrazioneForm from './RegistrazioneForm'
 
-export default function RegistratiPage() {
+export default function RegistratiPage({
+  searchParams,
+}: {
+  searchParams: { errore?: string }
+}) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
       <div className="w-full max-w-sm">
@@ -21,6 +25,12 @@ export default function RegistratiPage() {
           <p className="mt-1 text-sm font-bold text-black/55">
             Registrati come cliente per ordinare e prenotare dai migliori locali.
           </p>
+
+          {searchParams.errore === 'link-scaduto' && (
+            <div className="mt-4 rounded-xl bg-red-50 px-3 py-3 text-sm font-bold text-red-600">
+              Il link di verifica è scaduto o già utilizzato. Registrati di nuovo per ricevere un nuovo link.
+            </div>
+          )}
 
           <RegistrazioneForm />
 

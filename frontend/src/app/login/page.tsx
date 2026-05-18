@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 
 import GoogleSignInButton from "@/components/GoogleSignInButton";
@@ -33,7 +33,9 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/admin");
+    const session = await getSession();
+    const role = (session?.user as { role?: string })?.role;
+    router.push(role === 'super_admin' ? '/admin' : '/');
     router.refresh();
   }
 
