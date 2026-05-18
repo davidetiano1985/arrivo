@@ -46,7 +46,7 @@ export default function FooterPubblico() {
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:grid-cols-5">
           <div className="col-span-2 sm:col-span-4 lg:col-span-1">
             <Link href="/">
-              <p className="text-xl font-black tracking-[0.12em]">ARRIVO</p>
+              <img src="/arrivo_logo.svg" alt="Arrivo" className="h-8 w-auto" />
               <p className="mt-1 text-[10px] font-bold uppercase text-white/35">
                 Prenota · Ordina · Arriva
               </p>

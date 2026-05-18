@@ -57,7 +57,7 @@ export default function Home() {
       <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
         <header className="flex items-center justify-between gap-3 py-5">
           <div className="min-w-0">
-            <p className="text-2xl font-black tracking-[0.16em]">ARRIVO</p>
+            <img src="/arrivo_logo.svg" alt="Arrivo" className="h-10 w-auto" />
             <p className="mt-0.5 text-[10px] font-bold uppercase text-white/40">
               Prenota · Ordina · Arriva
             </p>
