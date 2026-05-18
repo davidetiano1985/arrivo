@@ -75,6 +75,80 @@ export async function sendAdminNotificationEmail(data: {
   })
 }
 
+export async function sendRichiestaApprovataEmail(email: string, nomeLocale: string) {
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: `[Arrivo] Richiesta approvata: ${nomeLocale}`,
+    html: `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="utf-8" /><title>Richiesta approvata</title></head>
+<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#000000;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#111111;border-radius:24px;overflow:hidden;">
+        <tr><td style="background:#000000;padding:28px 40px 20px;border-bottom:1px solid #1a1a1a;">
+          <img src="https://arrivoapp.it/arrivo_logo.svg" alt="Arrivo" width="90" style="display:block;" />
+        </td></tr>
+        <tr><td style="padding:36px 40px 32px;">
+          <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ff6b00;">Richiesta approvata</p>
+          <h1 style="margin:0 0 16px;font-size:24px;font-weight:900;color:#ffffff;line-height:1.3;">Il tuo locale &egrave; stato approvato!</h1>
+          <p style="margin:0 0 24px;font-size:15px;font-weight:600;line-height:1.75;color:rgba(255,255,255,0.60);">
+            <strong style="color:#ffffff;">${nomeLocale}</strong> &egrave; ora attivo su Arrivo. Registrati con questa email per accedere alla dashboard del tuo locale.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:28px;">
+            <a href="https://arrivoapp.it/registrati" style="display:inline-block;background:#ff6b00;color:#ffffff;text-decoration:none;font-size:15px;font-weight:900;padding:16px 40px;border-radius:14px;">
+              Crea il tuo account &rarr;
+            </a>
+          </td></tr></table>
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.30);line-height:1.65;">Usa questa stessa email per registrarti. Per assistenza: <a href="mailto:davidetiano@arrivoapp.it" style="color:#ff6b00;text-decoration:none;">davidetiano@arrivoapp.it</a></p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.18);">Arrivo &middot; arrivoapp.it</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  })
+}
+
+export async function sendRichiestaRifiutataEmail(email: string, nomeLocale: string, nota?: string) {
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: `[Arrivo] Aggiornamento sulla tua richiesta: ${nomeLocale}`,
+    html: `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="utf-8" /><title>Aggiornamento richiesta</title></head>
+<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#000000;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#111111;border-radius:24px;overflow:hidden;">
+        <tr><td style="background:#000000;padding:28px 40px 20px;border-bottom:1px solid #1a1a1a;">
+          <img src="https://arrivoapp.it/arrivo_logo.svg" alt="Arrivo" width="90" style="display:block;" />
+        </td></tr>
+        <tr><td style="padding:36px 40px 32px;">
+          <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.40);">Aggiornamento richiesta</p>
+          <h1 style="margin:0 0 16px;font-size:24px;font-weight:900;color:#ffffff;line-height:1.3;">La tua richiesta non &egrave; stata accettata</h1>
+          <p style="margin:0 0 24px;font-size:15px;font-weight:600;line-height:1.75;color:rgba(255,255,255,0.60);">
+            La richiesta per <strong style="color:#ffffff;">${nomeLocale}</strong> non &egrave; stata approvata in questa fase.
+            ${nota ? `<br/><br/>Nota del team: <em>${nota}</em>` : ''}
+          </p>
+          <p style="margin:0;font-size:13px;font-weight:600;color:rgba(255,255,255,0.45);">Per ulteriori informazioni o per presentare una nuova richiesta, contattaci a <a href="mailto:davidetiano@arrivoapp.it" style="color:#ff6b00;text-decoration:none;">davidetiano@arrivoapp.it</a></p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.18);">Arrivo &middot; arrivoapp.it</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  })
+}
+
 export async function sendVerificationEmail(email: string, token: string, firstName?: string) {
   const url = `${process.env.NEXTAUTH_URL}/api/auth/verify?token=${token}`
   const greeting = firstName ? `Ciao ${firstName}!` : 'Benvenuto su Arrivo!'

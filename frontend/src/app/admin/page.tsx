@@ -11,10 +11,11 @@ export default async function AdminPage() {
   const name = session.user?.name ?? session.user?.email ?? "Admin";
   const role = (session.user as { role: string }).role;
 
-  const [totalUsers, activeUsers, suspendedUsers] = await Promise.all([
+  const [totalUsers, activeUsers, suspendedUsers, pendingRichieste] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { suspended: false } }),
     prisma.user.count({ where: { suspended: true } }),
+    prisma.localeRequest.count({ where: { status: 'pending' } }),
   ]);
 
   return (
@@ -66,18 +67,41 @@ export default async function AdminPage() {
                   <p className="text-xs font-black uppercase text-[#ff6b00]">
                     Controlli piattaforma
                   </p>
-                  <h3 className="mt-2 text-xl font-black">
-                    Utenti e accessi
-                  </h3>
+                  <h3 className="mt-2 text-xl font-black">Utenti e accessi</h3>
                   <p className="mt-2 text-sm font-bold leading-6 text-white/70">
                     Gestisci utenti, ruoli e accessi della piattaforma
                   </p>
                 </div>
-
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="break-all text-xs font-black uppercase text-white/45">
-                    /admin/users
+                  <span className="break-all text-xs font-black uppercase text-white/45">/admin/users</span>
+                  <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
+                    Apri
                   </span>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              className="group block rounded-2xl border border-white/10 bg-white/[0.06] p-5 text-white shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:border-[#ff6b00]/70 hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-[#ff6b00] focus:ring-offset-2 focus:ring-offset-black"
+              href="/admin/richieste"
+            >
+              <div className="flex h-full flex-col justify-between gap-5">
+                <div>
+                  <p className="text-xs font-black uppercase text-[#ff6b00]">
+                    Locali
+                  </p>
+                  <h3 className="mt-2 text-xl font-black">Richieste locali</h3>
+                  <p className="mt-2 text-sm font-bold leading-6 text-white/70">
+                    Approva o rifiuta le richieste di registrazione dei locali
+                  </p>
+                  {pendingRichieste > 0 && (
+                    <span className="mt-3 inline-block rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-black">
+                      {pendingRichieste} in attesa
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="break-all text-xs font-black uppercase text-white/45">/admin/richieste</span>
                   <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
                     Apri
                   </span>
