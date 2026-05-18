@@ -15,7 +15,7 @@ export default function RegistratiLocalePage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
+        <div className="mb-8 flex flex-col items-center">
           <Link href="/">
             <img src="/arrivo_logo.svg" alt="Arrivo" className="h-10 w-auto" />
           </Link>

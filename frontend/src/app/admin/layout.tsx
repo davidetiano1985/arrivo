@@ -33,8 +33,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-black px-6 py-7 md:flex md:flex-col">
-        <Link className="text-2xl font-black text-[#ff6b00]" href="/admin">
-          Arrivo Admin
+        <Link className="flex items-center gap-2" href="/admin">
+          <img src="/arrivo_logo.svg" alt="Arrivo" className="h-7 w-auto" />
+          <span className="text-sm font-black text-[#ff6b00]">Admin</span>
         </Link>
 
         <nav className="mt-8 grid gap-2">
@@ -55,8 +56,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       </aside>
 
       <header className="sticky top-0 z-20 border-b border-white/10 bg-black/95 px-4 py-4 backdrop-blur md:hidden">
-        <Link className="text-xl font-black text-[#ff6b00]" href="/admin">
-          Arrivo Admin
+        <Link className="flex items-center gap-2" href="/admin">
+          <img src="/arrivo_logo.svg" alt="Arrivo" className="h-6 w-auto" />
+          <span className="text-sm font-black text-[#ff6b00]">Admin</span>
         </Link>
 
         <nav className="mt-4 flex flex-wrap gap-2">
