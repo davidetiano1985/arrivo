@@ -122,14 +122,14 @@ export default function RegistratiLocalePage() {
               />
             </div>
 
-            <button
-              className="h-12 w-full rounded-xl bg-[#ff6b00] text-sm font-black text-white"
-              type="button"
+            <a
+              className="block h-12 w-full rounded-xl bg-[#ff6b00] text-center text-sm font-black text-white leading-[3rem]"
+              href="mailto:davidetiano@arrivoapp.it?subject=Richiesta%20registrazione%20locale"
             >
-              Registra locale
-            </button>
+              Invia richiesta via email →
+            </a>
             <p className="text-center text-xs font-bold text-black/45">
-              Riceverai conferma dell&apos;invio della richiesta
+              Si aprirà la tua app email con la richiesta precompilata
             </p>
           </div>
 

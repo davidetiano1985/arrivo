@@ -59,7 +59,7 @@ export default function BlogPage() {
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-xs font-bold text-white/30">{art.data}</span>
                   <span className="rounded-full border border-white/15 px-3 py-1 text-xs font-black text-white/40">
-                    Coming soon
+                    In arrivo
                   </span>
                 </div>
               </div>
