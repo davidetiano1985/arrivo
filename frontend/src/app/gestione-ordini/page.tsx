@@ -14,7 +14,7 @@ const vantaggi = [
   { titolo: "Meno errori in cucina", testo: "Gli ordini arrivano scritti e chiari. Nessun fraintendimento tra sala e cucina." },
   { titolo: "Cucina più organizzata", testo: "Gli ordini sono sequenziati per orario. La produzione è prevedibile e gestibile." },
   { titolo: "Meno sprechi", testo: "Sai in anticipo cosa verrà ordinato. Meno derrate inutilizzate, più controllo sui costi." },
-  { titolo: "Tempi ridotti del 40%", testo: "Con la gestione pre-ordini, il tempo medio dal tavolo al piatto cala drasticamente." },
+  { titolo: "Tempi di attesa ridotti", testo: "Con la gestione pre-ordini, il tempo medio dal tavolo al piatto cala drasticamente." },
 ];
 
 export default function GestioneOrdiniPage() {

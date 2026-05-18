@@ -78,7 +78,7 @@ export default function FooterPubblico() {
 
         <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row sm:items-center">
           <p className="text-xs font-bold text-white/25">
-            © 2025 Arrivo. Tutti i diritti riservati.
+            © 2026 Arrivo. Tutti i diritti riservati.
           </p>
           <div className="flex gap-5">
             <Link className="text-xs font-bold text-white/25 transition hover:text-white/60" href="/privacy">Privacy</Link>

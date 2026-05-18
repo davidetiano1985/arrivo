@@ -34,8 +34,12 @@ export default function RegistrazioneForm() {
     setErrore('')
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
-      const result = await registraCliente(formData)
-      if (result?.error) setErrore(result.error)
+      try {
+        const result = await registraCliente(formData)
+        if (result?.error) setErrore(result.error)
+      } catch {
+        setErrore('Qualcosa è andato storto. Aggiorna la pagina e riprova.')
+      }
     })
   }
 

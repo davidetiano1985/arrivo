@@ -34,7 +34,7 @@ export default function DashboardPage() {
           href="/registra-attivita"
           className="mt-8 inline-block rounded-2xl bg-[#ff6b00] px-7 py-3.5 text-sm font-black text-white transition hover:bg-[#e05e00]"
         >
-          Accedi alla dashboard
+          Registra la tua attività →
         </Link>
       </section>
 
