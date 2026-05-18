@@ -6,6 +6,12 @@ import GoogleProvider from 'next-auth/providers/google'
 
 import { prisma } from './prisma'
 
+// DIAGNOSTIC — rimuovere dopo verifica Google OAuth
+const _gid = process.env.GOOGLE_CLIENT_ID ?? ''
+const _gsec = process.env.GOOGLE_CLIENT_SECRET ?? ''
+console.log('[auth] GOOGLE_CLIENT_ID  len=%d suffix=%s', _gid.length, _gid.slice(-16))
+console.log('[auth] GOOGLE_CLIENT_SECRET len=%d defined=%s', _gsec.length, _gsec.length > 0)
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
