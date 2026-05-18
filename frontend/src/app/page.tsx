@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import FooterPubblico from "../components/FooterPubblico";
 import HeaderPublico from "../components/HeaderPublico";
 
 // ── Dati mock inline per la homepage ─────────────────────────────────────────
@@ -357,72 +358,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="border-t border-white/10 bg-[#050505] pb-28 pt-14 sm:pb-14">
-        <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:grid-cols-5">
-            {/* Brand */}
-            <div className="col-span-2 sm:col-span-4 lg:col-span-1">
-              <p className="text-xl font-black tracking-[0.12em]">ARRIVO</p>
-              <p className="mt-1 text-[10px] font-bold uppercase text-white/35">
-                Prenota · Ordina · Arriva
-              </p>
-              <p className="mt-4 text-xs font-bold leading-5 text-white/35">
-                La nuova esperienza food.<br />
-                Arrivi, ti siedi, mangi.
-              </p>
-            </div>
-
-            {/* Colonne link */}
-            {[
-              {
-                titolo: "Azienda",
-                voci: ["Chi siamo", "Come funziona", "Blog", "Lavora con noi"],
-              },
-              {
-                titolo: "Clienti",
-                voci: ["Registrati", "Accedi", "Come prenotare", "FAQ"],
-              },
-              {
-                titolo: "Ristoratori",
-                voci: ["Unisciti ad Arrivo", "Pannello gestione", "Prezzi", "Supporto"],
-              },
-              {
-                titolo: "Supporto",
-                voci: ["Centro assistenza", "Contattaci", "Privacy", "Termini di servizio"],
-              },
-            ].map((col) => (
-              <div key={col.titolo}>
-                <p className="text-xs font-black uppercase text-white/40">{col.titolo}</p>
-                <ul className="mt-4 space-y-2.5">
-                  {col.voci.map((v) => (
-                    <li key={v}>
-                      <a
-                        href="#"
-                        className="text-sm font-bold text-white/50 transition hover:text-white"
-                      >
-                        {v}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          {/* Footer bottom */}
-          <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row sm:items-center">
-            <p className="text-xs font-bold text-white/25">
-              © 2025 Arrivo. Tutti i diritti riservati.
-            </p>
-            <div className="flex gap-5">
-              <a href="#" className="text-xs font-bold text-white/25 transition hover:text-white/60">Privacy</a>
-              <a href="#" className="text-xs font-bold text-white/25 transition hover:text-white/60">Termini</a>
-              <a href="#" className="text-xs font-bold text-white/25 transition hover:text-white/60">Cookie</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <FooterPubblico />
 
       {/* ── MOBILE NAV ── */}
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070707] px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:hidden">
