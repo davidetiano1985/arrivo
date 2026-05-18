@@ -20,7 +20,18 @@ export async function registraCliente(
   if (password !== conferma) return { error: 'Le password non coincidono.' }
 
   const esistente = await prisma.user.findUnique({ where: { email } })
-  if (esistente) return { error: 'Questa email è già registrata.' }
+  if (esistente) {
+    if (!esistente.emailVerified) {
+      // Account esiste ma non verificato: reinvia email invece di bloccare
+      const token = crypto.randomBytes(32).toString('hex')
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      await prisma.verificationToken.deleteMany({ where: { identifier: email } })
+      await prisma.verificationToken.create({ data: { identifier: email, token, expires } })
+      await sendVerificationEmail(email, token)
+      redirect('/verifica-email')
+    }
+    return { error: 'Questa email è già registrata.' }
+  }
 
   const hashed = await bcrypt.hash(password, 12)
 
