@@ -151,7 +151,7 @@ export default function RegistratiLocalePage() {
         </div>
 
         <p className="mt-6 text-center text-xs font-bold text-white/35">
-          Demo UI — registrazione non ancora attiva
+          Registrazione partner in fase di attivazione. Riceverai conferma via email.
         </p>
       </div>
     </main>

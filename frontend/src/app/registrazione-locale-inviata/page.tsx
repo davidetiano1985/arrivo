@@ -44,7 +44,7 @@ export default function RegistrazioneLocaleInviataPage() {
         </div>
 
         <p className="mt-6 text-center text-xs font-bold text-white/35">
-          Demo UI — approvazione non ancora attiva
+          Approvazione in corso. Il team Arrivo ti contatterà entro 48 ore.
         </p>
       </div>
     </main>

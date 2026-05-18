@@ -42,16 +42,11 @@ export default function DashboardPage() {
       <section className="bg-[#0a0a0a] py-14">
         <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
           <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#111]">
-            {/* Fake browser chrome */}
-            <div className="flex items-center gap-2 border-b border-white/8 px-5 py-3">
-              <div className="h-3 w-3 rounded-full bg-white/10" />
-              <div className="h-3 w-3 rounded-full bg-white/10" />
-              <div className="h-3 w-3 rounded-full bg-white/10" />
-              <div className="ml-4 flex-1 rounded-md bg-white/5 px-3 py-1 text-xs font-bold text-white/20">
-                dashboard.arrivoapp.it
-              </div>
+            <div className="flex items-center justify-between border-b border-white/8 px-5 py-3">
+              <span className="text-xs font-bold text-white/30">Pannello partner — Arrivo</span>
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold text-white/25">Anteprima</span>
             </div>
-            {/* Dashboard mock */}
+            {/* Dashboard preview */}
             <div className="grid gap-0 lg:grid-cols-4">
               {/* Sidebar */}
               <div className="hidden border-r border-white/8 p-5 lg:block">
