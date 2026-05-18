@@ -130,9 +130,9 @@ export default function Home() {
         {/* Stats strip */}
         <div className="mt-12 grid grid-cols-3 gap-4 border-t border-white/10 pt-10 sm:flex sm:gap-12">
           {[
-            { val: "500+", lab: "Locali partner" },
-            { val: "12.000+", lab: "Prenotazioni" },
-            { val: "4.9", lab: "Rating medio" },
+            { val: "3 passi", lab: "Per prenotare" },
+            { val: "Zero", lab: "Attese al tavolo" },
+            { val: "100%", lab: "Digitale e mobile" },
           ].map((s) => (
             <div key={s.lab}>
               <p className="text-2xl font-black text-[#ff6b00] sm:text-3xl">{s.val}</p>

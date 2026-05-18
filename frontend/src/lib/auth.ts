@@ -40,6 +40,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name ?? '',
           role: user.role,
+          firstName: user.firstName ?? '',
         }
       },
     }),
@@ -62,14 +63,16 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        const role = (user as { role?: string }).role
-        if (role) {
-          // credentials sign-in: role is already in the user object
-          token.role = role
+        const u = user as { role?: string; firstName?: string }
+        if (u.role) {
+          // credentials sign-in: role and firstName already in the user object
+          token.role = u.role
+          token.firstName = u.firstName ?? ''
         } else if (user.id) {
-          // OAuth sign-in: role is not forwarded, fetch from DB
+          // OAuth sign-in: fetch from DB
           const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
           token.role = dbUser?.role ?? 'cliente'
+          token.firstName = dbUser?.firstName ?? ''
         }
       }
       return token
@@ -77,7 +80,8 @@ export const authOptions: NextAuthOptions = {
     session({ session, token }) {
       if (session.user) {
         (session.user as { role: string }).role = token.role as string;
-        (session.user as { id: string }).id = token.id as string
+        (session.user as { id: string }).id = token.id as string;
+        (session.user as { firstName: string }).firstName = (token.firstName as string) ?? '';
       }
       return session
     },

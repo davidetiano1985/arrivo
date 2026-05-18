@@ -41,22 +41,42 @@ export default function RegistrazioneForm() {
 
   return (
     <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
-      <div>
-        <label
-          className="block text-xs font-black uppercase text-black/45"
-          htmlFor="nome"
-        >
-          Nome completo
-        </label>
-        <input
-          autoComplete="name"
-          className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
-          id="nome"
-          name="nome"
-          placeholder="Mario Rossi"
-          required
-          type="text"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label
+            className="block text-xs font-black uppercase text-black/45"
+            htmlFor="nome"
+          >
+            Nome
+          </label>
+          <input
+            autoComplete="given-name"
+            className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
+            id="nome"
+            name="nome"
+            placeholder="Mario"
+            required
+            type="text"
+          />
+        </div>
+
+        <div>
+          <label
+            className="block text-xs font-black uppercase text-black/45"
+            htmlFor="cognome"
+          >
+            Cognome
+          </label>
+          <input
+            autoComplete="family-name"
+            className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-sm font-bold outline-none placeholder:text-black/35 focus:border-[#ff6b00]"
+            id="cognome"
+            name="cognome"
+            placeholder="Rossi"
+            required
+            type="text"
+          />
+        </div>
       </div>
 
       <div>

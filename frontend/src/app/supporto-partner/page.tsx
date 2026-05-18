@@ -63,14 +63,20 @@ export default function SupportoPartnerPage() {
             {[
               { titolo: "Email partner", desc: "Scrivi a davidetiano@arrivoapp.it per questioni tecniche, commerciali o operative.", cta: "Scrivi →", href: "mailto:davidetiano@arrivoapp.it" },
               { titolo: "Onboarding dedicato", desc: "Per i nuovi partner offriamo una sessione di setup guidato. Prenota una call.", cta: "Prenota call →", href: "mailto:davidetiano@arrivoapp.it?subject=Richiesta onboarding" },
-              { titolo: "Documentazione", desc: "Guide dettagliate su dashboard, menu, prenotazioni e pagamenti. In preparazione.", cta: "Presto disponibile", href: "#" },
+              { titolo: "Documentazione", desc: "Guide dettagliate su dashboard, menu, prenotazioni e pagamenti. In preparazione.", cta: "Presto disponibile", href: "" },
             ].map((c) => (
               <div key={c.titolo} className="rounded-2xl border border-white/8 bg-white/[0.04] p-6">
                 <h3 className="font-black text-[#ff6b00]">{c.titolo}</h3>
                 <p className="mt-2 text-sm font-bold leading-6 text-white/55">{c.desc}</p>
-                <a href={c.href} className="mt-4 block text-sm font-black text-white transition hover:text-[#ff6b00]">
-                  {c.cta}
-                </a>
+                {c.href ? (
+                  <a href={c.href} className="mt-4 block text-sm font-black text-white transition hover:text-[#ff6b00]">
+                    {c.cta}
+                  </a>
+                ) : (
+                  <span className="mt-4 block text-sm font-black text-white/35">
+                    {c.cta}
+                  </span>
+                )}
               </div>
             ))}
           </div>
