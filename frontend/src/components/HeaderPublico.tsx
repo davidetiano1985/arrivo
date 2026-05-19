@@ -16,7 +16,7 @@ export default function HeaderPublico() {
   const { data: session, status } = useSession()
   const role = (session?.user as { role?: string } | undefined)?.role
   const firstName = (session?.user as { firstName?: string } | undefined)?.firstName
-  const displayName = firstName || session?.user?.name?.split(' ')[0] || ''
+  const greeting = firstName || session?.user?.name?.split(' ')[0] || ''
 
   return (
     <div className="flex shrink-0 items-center gap-2">
@@ -47,40 +47,35 @@ export default function HeaderPublico() {
             Registrati
           </Link>
         </>
-      ) : role === 'super_admin' ? (
-        <>
-          {displayName && (
-            <span className="hidden text-sm font-black text-white/50 sm:block">
-              Ciao, {displayName}
-            </span>
-          )}
-          <Link
-            className="rounded-full border border-white/20 px-4 py-2 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white"
-            href="/admin"
-          >
-            Admin
-          </Link>
-          <button
-            className="rounded-full bg-[#ff6b00] px-4 py-2 text-sm font-black text-black transition hover:bg-[#e05e00]"
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            type="button"
-          >
-            Esci
-          </button>
-        </>
       ) : (
         <>
-          {displayName && (
-            <span className="hidden text-sm font-black text-white/50 sm:block">
-              Ciao, {displayName}
-            </span>
+          <span className="hidden text-sm font-black text-white/50 sm:block">
+            👋 Ciao{greeting ? ` ${greeting}` : ''}
+          </span>
+
+          {role === 'super_admin' ? (
+            <Link
+              className="rounded-full border border-white/20 px-4 py-2 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white"
+              href="/admin"
+            >
+              Admin
+            </Link>
+          ) : role === 'gestore_locale' ? (
+            <Link
+              className="rounded-full border border-white/20 px-4 py-2 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white"
+              href="/ristorante"
+            >
+              Il mio locale
+            </Link>
+          ) : (
+            <Link
+              className="rounded-full border border-white/20 px-4 py-2 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white"
+              href="/profilo"
+            >
+              Profilo
+            </Link>
           )}
-          <Link
-            className="rounded-full border border-white/20 px-4 py-2 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white"
-            href="/profilo"
-          >
-            Profilo
-          </Link>
+
           <button
             className="rounded-full bg-[#ff6b00] px-4 py-2 text-sm font-black text-black transition hover:bg-[#e05e00]"
             onClick={() => signOut({ callbackUrl: '/' })}
