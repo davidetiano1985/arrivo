@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 
+import NavbarPubblica from '@/components/NavbarPubblica'
 import { prisma } from '@/lib/prisma'
 
 const getRestaurant = cache(async (slug: string) => {
@@ -68,20 +69,7 @@ export default async function PaginaRistorante({ params }: { params: { slug: str
   return (
     <main className="min-h-screen bg-black text-white">
 
-      {/* ── Navbar minimale ── */}
-      <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
-        <header className="flex items-center justify-between gap-3 py-5">
-          <Link href="/">
-            <img alt="Arrivo" className="h-10 w-auto" src="/arrivo_logo.svg" />
-          </Link>
-          <Link
-            className="rounded-full border border-white/20 px-4 py-2 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white"
-            href="/registrati"
-          >
-            Registrati
-          </Link>
-        </header>
-      </div>
+      <NavbarPubblica />
 
       <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6 sm:py-10">
         <div className="max-w-2xl">
