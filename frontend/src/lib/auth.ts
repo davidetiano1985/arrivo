@@ -18,11 +18,13 @@ export const authOptions: NextAuthOptions = {
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
-          // Always show Google account selector — prevents auto-skip of consent
-          // screen when the user has previously authorized this app.
-          // Without this, Google may silently re-authorize an already-approved
-          // account, making the flow appear to "bypass" login on repeated attempts.
-          prompt: 'select_account',
+          // 'consent' forces Google to show the full authorization screen on
+          // every login — no silent re-authorization, no "bypass" perception.
+          // Every attempt is visually identical: account picker + allow button.
+          // More explicit than 'select_account' (which skips the allow step
+          // if the user has previously authorized this app).
+          prompt: 'consent',
+          access_type: 'online',
         },
       },
     }),
