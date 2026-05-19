@@ -48,15 +48,28 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === 'google' && user.id) {
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
-        if (dbUser?.suspended) return false
-        // Google confirms email ownership — auto-verify if not already done
-        if (!dbUser?.emailVerified) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { emailVerified: new Date() },
-          })
+      if (account?.provider === 'google') {
+        // Require email from Google profile
+        if (!user.email) return false
+
+        try {
+          // Look up by email — safe even when the DB row doesn't exist yet
+          // (new users: adapter creates the row after signIn returns true)
+          const dbUser = await prisma.user.findUnique({ where: { email: user.email } })
+
+          if (dbUser?.suspended) return false
+
+          // Auto-verify for existing email/password accounts linking Google.
+          // New Google-only users get emailVerified set by the adapter on creation.
+          if (dbUser && !dbUser.emailVerified) {
+            await prisma.user.update({
+              where: { email: user.email },
+              data: { emailVerified: new Date() },
+            })
+          }
+        } catch (err) {
+          console.error('[signIn] Google callback DB error:', err)
+          return false
         }
       }
       return true
@@ -79,8 +92,11 @@ export const authOptions: NextAuthOptions = {
           token.firstName = u.firstName ?? ''
           token.hasPassword = u.hasPassword ?? false
         } else if (user.id) {
-          // OAuth sign-in: fetch from DB
-          const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+          // OAuth sign-in: fetch from DB by id, fallback to email if row not yet committed
+          let dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+          if (!dbUser && user.email) {
+            dbUser = await prisma.user.findUnique({ where: { email: user.email } })
+          }
           token.role = dbUser?.role ?? 'cliente'
           token.firstName = dbUser?.firstName ?? ''
           token.hasPassword = !!dbUser?.password
