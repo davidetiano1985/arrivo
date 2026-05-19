@@ -87,7 +87,7 @@ export default function Home() {
           </p>
 
           {/* Search bar */}
-          <div className="mt-8 overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(255,107,0,0.15)]">
+          <form action="/trova-ristoranti" method="GET" className="mt-8 overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(255,107,0,0.15)]">
             <div className="flex flex-col sm:flex-row">
               <div className="flex-1 border-b border-black/10 px-5 py-4 sm:border-b-0 sm:border-r">
                 <p className="text-[10px] font-black uppercase text-black/40">Ristorante o cucina</p>
@@ -101,23 +101,27 @@ export default function Home() {
                 <p className="text-[10px] font-black uppercase text-black/40">Città</p>
                 <input
                   className="mt-1 w-full bg-transparent text-sm font-black text-black outline-none placeholder:text-black/30"
+                  name="city"
                   placeholder="Milano, Roma…"
                   type="text"
                 />
               </div>
               <div className="p-3">
-                <button className="h-full w-full rounded-xl bg-[#ff6b00] px-6 py-3 text-sm font-black text-white transition hover:bg-[#e05e00] sm:h-auto sm:w-auto">
+                <button className="h-full w-full rounded-xl bg-[#ff6b00] px-6 py-3 text-sm font-black text-white transition hover:bg-[#e05e00] sm:h-auto sm:w-auto" type="submit">
                   Cerca
                 </button>
               </div>
             </div>
-          </div>
+          </form>
 
           {/* CTA buttons */}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <button className="h-13 rounded-2xl bg-[#ff6b00] px-7 py-3.5 text-sm font-black text-white transition hover:bg-[#e05e00]">
+            <Link
+              href="/trova-ristoranti"
+              className="h-13 rounded-2xl bg-[#ff6b00] px-7 py-3.5 text-center text-sm font-black text-white transition hover:bg-[#e05e00]"
+            >
               Trova un ristorante
-            </button>
+            </Link>
             <Link
               href="/registrati/locale"
               className="h-13 rounded-2xl border border-white/20 px-7 py-3.5 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white text-center"
