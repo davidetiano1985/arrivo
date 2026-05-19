@@ -82,7 +82,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     // ── jwt ────────────────────────────────────────────────────────────────
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user, account, trigger, profile }) {
       // Session refresh triggered by client update()
       if (trigger === 'update') {
         const id = token.id as string | undefined
@@ -124,9 +124,38 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const dbUser = await prisma.user.findUnique({ where: { email } })
+
+          // Populate firstName/lastName from Google profile on first login.
+          // The Prisma adapter creates the User with `name` (full display name)
+          // but does NOT split it into firstName/lastName (custom fields).
+          // We do that here once and persist it so the dashboard greeting works.
+          let firstName = dbUser?.firstName ?? ''
+          if (dbUser && !dbUser.firstName && profile) {
+            const p = profile as {
+              given_name?: string
+              family_name?: string
+              name?: string
+            }
+            firstName  = p.given_name  ?? (p.name?.trim().split(/\s+/)[0])  ?? ''
+            const lastName = p.family_name ?? (p.name?.trim().split(/\s+/).slice(1).join(' ')) ?? ''
+            if (firstName || lastName) {
+              try {
+                await prisma.user.update({
+                  where: { email },
+                  data: {
+                    firstName: firstName  || null,
+                    lastName:  lastName   || null,
+                  },
+                })
+              } catch (updateErr) {
+                console.error('[auth] jwt firstName update error:', updateErr)
+              }
+            }
+          }
+
           token.id          = dbUser?.id ?? user.id   // DB id when available
           token.role        = dbUser?.role        ?? 'cliente'
-          token.firstName   = dbUser?.firstName   ?? ''
+          token.firstName   = firstName
           token.hasPassword = dbUser?.password    ? true : false
         } catch (err) {
           console.error('[auth] jwt Google lookup error:', err)

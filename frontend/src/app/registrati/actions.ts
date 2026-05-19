@@ -23,8 +23,18 @@ export async function registraCliente(
 
   const esistente = await prisma.user.findUnique({ where: { email } })
   if (esistente) {
+    // ── Google-only account (no password) ─────────────────────────────────
+    // Check this FIRST — never send verification emails to Google accounts.
+    // A Google user with emailVerified=null would otherwise hit the resend
+    // path below, which is wrong (they must use Google, not email/password).
+    if (!esistente.password) {
+      return {
+        error: 'Questa email è già registrata tramite Google. Clicca "Accedi con Google" per entrare.',
+      }
+    }
+
+    // ── Email/password account, unverified — resend verification ──────────
     if (!esistente.emailVerified) {
-      // Unverified: resend verification instead of blocking
       const token = crypto.randomBytes(32).toString('hex')
       const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
       await prisma.verificationToken.deleteMany({ where: { identifier: email } })
@@ -32,12 +42,8 @@ export async function registraCliente(
       await sendVerificationEmail(email, token, esistente.firstName ?? '')
       redirect('/verifica-email')
     }
-    // Distinguish Google-only accounts from email/password accounts
-    if (!esistente.password) {
-      return {
-        error: 'Questa email è già registrata tramite Google. Clicca "Accedi con Google" per entrare.',
-      }
-    }
+
+    // ── Email/password account, verified ──────────────────────────────────
     return {
       error: 'Questa email è già registrata. Accedi con le tue credenziali.',
     }
