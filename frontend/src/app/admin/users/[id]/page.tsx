@@ -40,7 +40,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
       email: true, phone: true, role: true, suspended: true, emailVerified: true,
       image: true, password: true, createdAt: true, updatedAt: true,
       loginAttempts: true,
-      accounts: { select: { provider: true, createdAt: true } },
+      accounts: { select: { provider: true } },
       adminLogsAsTarget: {
         select: { id: true, createdAt: true, adminEmail: true, action: true, details: true },
         orderBy: { createdAt: 'desc' },
