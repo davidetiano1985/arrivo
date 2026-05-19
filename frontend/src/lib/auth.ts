@@ -106,7 +106,7 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     // ── signIn ─────────────────────────────────────────────────────────────
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider !== 'google') return true
 
       // Google must always provide an email — hard gate
@@ -114,16 +114,13 @@ export const authOptions: NextAuthOptions = {
       if (!email) return false
 
       try {
-        // All DB lookups use email — never user.id (which is the Google profile
-        // ID before the adapter writes the row, not a valid DB UUID).
-        // Single query reused for both auth logic and LoginEvent to avoid N+1.
+        // Single query reused for auth logic, name save and LoginEvent.
         const dbUser = await prisma.user.findUnique({ where: { email } })
 
         // Block suspended users before anything else
         if (dbUser?.suspended) return false
 
         // Auto-verify email for existing email/password accounts now linking Google.
-        // Brand-new Google-only accounts: the adapter sets emailVerified on creation.
         if (dbUser && !dbUser.emailVerified) {
           await prisma.user.update({
             where: { email },
@@ -131,11 +128,35 @@ export const authOptions: NextAuthOptions = {
           })
         }
 
-        // Log successful Google login (reuse dbUser — no second query needed)
         if (dbUser) {
+          // ── Save nome + cognome from Google profile ─────────────────────
+          // SOURCE: profile.given_name / profile.family_name (OAuth spec fields).
+          // If either is missing → mark profileIncomplete so the guard popup
+          // blocks the user until they fill in the data manually.
+          const p = profile as { given_name?: string; family_name?: string } | undefined
+          const gFirst = p?.given_name?.trim()  ?? ''
+          const gLast  = p?.family_name?.trim() ?? ''
+
+          // Prefer Google-provided value; fall back to whatever is already in DB
+          // so manually-completed profiles are never overwritten with empty strings.
+          const firstName = gFirst || (dbUser.firstName ?? '')
+          const lastName  = gLast  || (dbUser.lastName  ?? '')
+          const profileIncomplete = !firstName || !lastName
+
+          await prisma.user.update({
+            where: { email },
+            data: {
+              firstName:        firstName || null,
+              lastName:         lastName  || null,
+              name:             firstName && lastName ? `${firstName} ${lastName}` : (dbUser.name ?? null),
+              profileIncomplete,
+            },
+          }).catch((e) => console.error('[auth] signIn name update error:', e))
+
+          // Log successful Google login
           await prisma.loginEvent.create({
             data: { userId: dbUser.id, success: true, provider: 'google' },
-          }).catch(() => {}) // never block sign-in on log failure
+          }).catch(() => {})
         }
       } catch (err) {
         console.error('[auth] signIn Google error:', err)
@@ -154,8 +175,9 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.user.findUnique({ where: { id } })
             if (dbUser) {
-              token.firstName = dbUser.firstName ?? ''
-              token.role      = dbUser.role
+              token.firstName        = dbUser.firstName        ?? ''
+              token.role             = dbUser.role
+              token.profileIncomplete = dbUser.profileIncomplete ?? false
             }
           } catch (err) {
             console.error('[auth] jwt update lookup error:', err)
@@ -175,58 +197,34 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (u.role) {
-          token.id          = user.id
-          token.role        = u.role
-          token.firstName   = u.firstName ?? ''
-          token.hasPassword = u.hasPassword ?? false
+          token.id               = user.id
+          token.role             = u.role
+          token.firstName        = u.firstName ?? ''
+          token.hasPassword      = u.hasPassword ?? false
+          token.profileIncomplete = false   // credentials users always have firstName/lastName
           return token
         }
 
         // Google OAuth: use email as the single source of truth — never user.id
-        const email = u.email?.toLowerCase().trim() ?? token.email as string | undefined
+        const email = u.email?.toLowerCase().trim() ?? (token.email as string | undefined)
         if (!email) return token
 
         try {
+          // firstName/lastName have already been saved by the signIn callback above;
+          // just read the final DB state (no profile manipulation needed here).
           const dbUser = await prisma.user.findUnique({ where: { email } })
 
-          // Populate firstName/lastName from Google profile on first login.
-          // The Prisma adapter creates the User with `name` (full display name)
-          // but does NOT split it into firstName/lastName (custom fields).
-          // We do that here once and persist it so the dashboard greeting works.
-          let firstName = dbUser?.firstName ?? ''
-          if (dbUser && !dbUser.firstName && profile) {
-            const p = profile as {
-              given_name?: string
-              family_name?: string
-              name?: string
-            }
-            firstName  = p.given_name  ?? (p.name?.trim().split(/\s+/)[0])  ?? ''
-            const lastName = p.family_name ?? (p.name?.trim().split(/\s+/).slice(1).join(' ')) ?? ''
-            if (firstName || lastName) {
-              try {
-                await prisma.user.update({
-                  where: { email },
-                  data: {
-                    firstName: firstName  || null,
-                    lastName:  lastName   || null,
-                  },
-                })
-              } catch (updateErr) {
-                console.error('[auth] jwt firstName update error:', updateErr)
-              }
-            }
-          }
-
-          token.id          = dbUser?.id ?? user.id   // DB id when available
-          token.role        = dbUser?.role        ?? 'cliente'
-          token.firstName   = firstName
-          token.hasPassword = dbUser?.password    ? true : false
+          token.id               = dbUser?.id          ?? user.id
+          token.role             = dbUser?.role         ?? 'cliente'
+          token.firstName        = dbUser?.firstName    ?? ''
+          token.hasPassword      = dbUser?.password     ? true : false
+          token.profileIncomplete = dbUser?.profileIncomplete ?? false
         } catch (err) {
           console.error('[auth] jwt Google lookup error:', err)
-          // Keep any previously set token values; apply safe defaults for missing ones
-          token.role        = (token.role        as string)  ?? 'cliente'
-          token.firstName   = (token.firstName   as string)  ?? ''
-          token.hasPassword = (token.hasPassword as boolean) ?? false
+          token.role             = (token.role             as string)  ?? 'cliente'
+          token.firstName        = (token.firstName        as string)  ?? ''
+          token.hasPassword      = (token.hasPassword      as boolean) ?? false
+          token.profileIncomplete = (token.profileIncomplete as boolean) ?? false
         }
       }
 
@@ -241,11 +239,13 @@ export const authOptions: NextAuthOptions = {
           id: string
           firstName: string
           hasPassword: boolean
+          profileIncomplete: boolean
         }
-        u.role        = (token.role        as string)  ?? 'cliente'
-        u.id          = (token.id          as string)  ?? ''
-        u.firstName   = (token.firstName   as string)  ?? ''
-        u.hasPassword = (token.hasPassword as boolean) ?? false
+        u.role             = (token.role             as string)  ?? 'cliente'
+        u.id               = (token.id               as string)  ?? ''
+        u.firstName        = (token.firstName        as string)  ?? ''
+        u.hasPassword      = (token.hasPassword      as boolean) ?? false
+        u.profileIncomplete = (token.profileIncomplete as boolean) ?? false
       }
       return session
     },

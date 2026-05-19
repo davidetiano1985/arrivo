@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import NextAuthSessionProvider from "../components/SessionProvider";
+import CompleteProfileGuard from "../components/CompleteProfileGuard";
 
 export const metadata: Metadata = {
   title: "Arrivo — Prenota, ordina e arriva senza attese",
@@ -42,7 +43,10 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body>
-        <NextAuthSessionProvider>{children}</NextAuthSessionProvider>
+        <NextAuthSessionProvider>
+          <CompleteProfileGuard />
+          {children}
+        </NextAuthSessionProvider>
       </body>
     </html>
   );

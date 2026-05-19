@@ -21,7 +21,10 @@ function roleBadge(role: string) {
 }
 
 function formatDate(d: Date) {
-  return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return d.toLocaleString('it-IT', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 function fmtId(n: number) {
