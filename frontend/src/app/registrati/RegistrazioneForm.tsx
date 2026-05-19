@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 
 import { registraCliente } from './actions'
@@ -160,9 +161,17 @@ export default function RegistrazioneForm() {
       </div>
 
       {errore && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-600">
-          {errore}
-        </p>
+        <div className="rounded-xl bg-red-50 px-3 py-2.5">
+          <p className="text-sm font-bold text-red-600">{errore}</p>
+          {errore.includes('già registrat') && (
+            <Link
+              className="mt-1 inline-block text-xs font-black text-[#ff6b00] hover:underline"
+              href="/login"
+            >
+              → Vai al login
+            </Link>
+          )}
+        </div>
       )}
 
       <button

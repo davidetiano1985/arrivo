@@ -24,7 +24,7 @@ export async function registraCliente(
   const esistente = await prisma.user.findUnique({ where: { email } })
   if (esistente) {
     if (!esistente.emailVerified) {
-      // Account esiste ma non verificato: reinvia email invece di bloccare
+      // Unverified: resend verification instead of blocking
       const token = crypto.randomBytes(32).toString('hex')
       const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
       await prisma.verificationToken.deleteMany({ where: { identifier: email } })
@@ -32,7 +32,15 @@ export async function registraCliente(
       await sendVerificationEmail(email, token, esistente.firstName ?? '')
       redirect('/verifica-email')
     }
-    return { error: 'Questa email è già registrata.' }
+    // Distinguish Google-only accounts from email/password accounts
+    if (!esistente.password) {
+      return {
+        error: 'Questa email è già registrata tramite Google. Clicca "Accedi con Google" per entrare.',
+      }
+    }
+    return {
+      error: 'Questa email è già registrata. Accedi con le tue credenziali.',
+    }
   }
 
   const hashed = await bcrypt.hash(password, 12)
