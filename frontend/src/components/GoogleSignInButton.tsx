@@ -1,6 +1,7 @@
 'use client'
 
 import { signIn } from 'next-auth/react'
+import { useState } from 'react'
 
 const GoogleIcon = () => (
   <svg fill="none" height={18} viewBox="0 0 24 24" width={18} xmlns="http://www.w3.org/2000/svg">
@@ -18,14 +19,28 @@ export default function GoogleSignInButton({
   label: string
   callbackUrl?: string
 }) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleClick() {
+    if (loading) return
+    setLoading(true)
+    try {
+      await signIn('google', { callbackUrl })
+    } catch {
+      // signIn redirects on success; reset on unexpected error
+      setLoading(false)
+    }
+  }
+
   return (
     <button
-      className="mt-4 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-black/10 text-sm font-black text-black transition hover:bg-black/[0.04]"
-      onClick={() => signIn('google', { callbackUrl })}
+      className="mt-4 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-black/10 text-sm font-black text-black transition hover:bg-black/[0.04] disabled:opacity-60"
+      disabled={loading}
+      onClick={handleClick}
       type="button"
     >
       <GoogleIcon />
-      {label}
+      {loading ? 'Reindirizzamento…' : label}
     </button>
   )
 }

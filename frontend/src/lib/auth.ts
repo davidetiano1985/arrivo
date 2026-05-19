@@ -87,10 +87,14 @@ export const authOptions: NextAuthOptions = {
       if (trigger === 'update') {
         const id = token.id as string | undefined
         if (id) {
-          const dbUser = await prisma.user.findUnique({ where: { id } })
-          if (dbUser) {
-            token.firstName = dbUser.firstName ?? ''
-            token.role      = dbUser.role
+          try {
+            const dbUser = await prisma.user.findUnique({ where: { id } })
+            if (dbUser) {
+              token.firstName = dbUser.firstName ?? ''
+              token.role      = dbUser.role
+            }
+          } catch (err) {
+            console.error('[auth] jwt update lookup error:', err)
           }
         }
         return token
@@ -118,11 +122,19 @@ export const authOptions: NextAuthOptions = {
         const email = u.email?.toLowerCase().trim() ?? token.email as string | undefined
         if (!email) return token
 
-        const dbUser = await prisma.user.findUnique({ where: { email } })
-        token.id          = dbUser?.id ?? user.id   // DB id when available
-        token.role        = dbUser?.role        ?? 'cliente'
-        token.firstName   = dbUser?.firstName   ?? ''
-        token.hasPassword = dbUser?.password    ? true : false
+        try {
+          const dbUser = await prisma.user.findUnique({ where: { email } })
+          token.id          = dbUser?.id ?? user.id   // DB id when available
+          token.role        = dbUser?.role        ?? 'cliente'
+          token.firstName   = dbUser?.firstName   ?? ''
+          token.hasPassword = dbUser?.password    ? true : false
+        } catch (err) {
+          console.error('[auth] jwt Google lookup error:', err)
+          // Keep any previously set token values; apply safe defaults for missing ones
+          token.role        = (token.role        as string)  ?? 'cliente'
+          token.firstName   = (token.firstName   as string)  ?? ''
+          token.hasPassword = (token.hasPassword as boolean) ?? false
+        }
       }
 
       return token
