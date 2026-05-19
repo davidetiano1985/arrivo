@@ -37,8 +37,14 @@ export async function registraCliente(
 
   const hashed = await bcrypt.hash(password, 12)
 
+  // Se c'è già un locale approvato con questa email, il ruolo iniziale è gestore_locale
+  const localeApprovato = await prisma.localeRequest.findFirst({
+    where: { email, status: 'approved' },
+  })
+  const ruolo = localeApprovato ? 'gestore_locale' : 'cliente'
+
   await prisma.user.create({
-    data: { name, firstName, lastName, email, password: hashed, role: 'cliente' },
+    data: { name, firstName, lastName, email, password: hashed, role: ruolo },
   })
 
   const token = crypto.randomBytes(32).toString('hex')

@@ -37,6 +37,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Google OAuth credentials (never commit these)
+client_secret*.json
+*service-account*.json
+
 # OS / editors
 .DS_Store
 Thumbs.db

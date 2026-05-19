@@ -30,13 +30,14 @@ export default function UserActions({ userId, currentRole, suspended, isSelf }: 
       setRole(currentRole)
       return
     }
+    const prevRole = role
     setLoading(true)
     setRole(newRole)
     try {
       await aggiornaRuolo(userId, newRole)
     } catch (e) {
       alert((e as Error).message)
-      setRole(role)
+      setRole(prevRole)
     } finally {
       setLoading(false)
     }

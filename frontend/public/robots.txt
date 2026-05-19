@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
+
 Disallow: /admin/
+Disallow: /ristorante/
+Disallow: /profilo/
 Disallow: /api/
+
+Sitemap: https://arrivoapp.it/sitemap.xml

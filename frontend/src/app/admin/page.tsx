@@ -8,7 +8,8 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const name = session.user?.name ?? session.user?.email ?? "Admin";
+  const firstName = (session.user as { firstName?: string })?.firstName
+  const name = firstName || session.user?.name?.split(' ')[0] || session.user?.email || 'Admin'
   const role = (session.user as { role: string }).role;
 
   const [totalUsers, activeUsers, suspendedUsers, pendingRichieste] = await Promise.all([

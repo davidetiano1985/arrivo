@@ -41,6 +41,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name ?? '',
           role: user.role,
           firstName: user.firstName ?? '',
+          hasPassword: true,
         }
       },
     }),
@@ -60,19 +61,29 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      if (trigger === 'update' && token.id) {
+        const dbUser = await prisma.user.findUnique({ where: { id: token.id as string } })
+        if (dbUser) {
+          token.firstName = dbUser.firstName ?? ''
+          token.role = dbUser.role
+        }
+        return token
+      }
       if (user) {
         token.id = user.id
-        const u = user as { role?: string; firstName?: string }
+        const u = user as { role?: string; firstName?: string; hasPassword?: boolean }
         if (u.role) {
           // credentials sign-in: role and firstName already in the user object
           token.role = u.role
           token.firstName = u.firstName ?? ''
+          token.hasPassword = u.hasPassword ?? false
         } else if (user.id) {
           // OAuth sign-in: fetch from DB
           const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
           token.role = dbUser?.role ?? 'cliente'
           token.firstName = dbUser?.firstName ?? ''
+          token.hasPassword = !!dbUser?.password
         }
       }
       return token
@@ -82,6 +93,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as { role: string }).role = token.role as string;
         (session.user as { id: string }).id = token.id as string;
         (session.user as { firstName: string }).firstName = (token.firstName as string) ?? '';
+        (session.user as { hasPassword: boolean }).hasPassword = (token.hasPassword as boolean) ?? false;
       }
       return session
     },
