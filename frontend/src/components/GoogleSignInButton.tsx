@@ -1,7 +1,7 @@
 'use client'
 
 import { signIn } from 'next-auth/react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 const GoogleIcon = () => (
   <svg fill="none" height={18} viewBox="0 0 24 24" width={18} xmlns="http://www.w3.org/2000/svg">
@@ -20,14 +20,23 @@ export default function GoogleSignInButton({
   callbackUrl?: string
 }) {
   const [loading, setLoading] = useState(false)
+  // useRef mutex: synchronous check/set, not subject to React render batching.
+  // useState alone has a batching window between click and re-render where a
+  // second rapid click can pass the `if (loading)` guard and launch a second
+  // OAuth flow — overwriting the state cookie and causing OAuthCallbackError
+  // "State cookie was missing." useRef closes that window completely.
+  const pendingRef = useRef(false)
 
   async function handleClick() {
-    if (loading) return
+    if (pendingRef.current) return  // synchronous guard — no batching gap
+    pendingRef.current = true
     setLoading(true)
     try {
       await signIn('google', { callbackUrl })
+      // signIn('google') navigates away on success; this line is never reached
     } catch {
-      // signIn redirects on success; reset on unexpected error
+      // Only reached on unexpected network/JS error (not on normal redirect)
+      pendingRef.current = false
       setLoading(false)
     }
   }

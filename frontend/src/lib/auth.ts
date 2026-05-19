@@ -16,6 +16,15 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          // Always show Google account selector — prevents auto-skip of consent
+          // screen when the user has previously authorized this app.
+          // Without this, Google may silently re-authorize an already-approved
+          // account, making the flow appear to "bypass" login on repeated attempts.
+          prompt: 'select_account',
+        },
+      },
     }),
 
     CredentialsProvider({
