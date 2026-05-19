@@ -158,6 +158,12 @@ export const authOptions: NextAuthOptions = {
             data: { userId: dbUser.id, success: true, provider: 'google' },
           }).catch(() => {})
         }
+
+        // [Fix M6] Opportunistic cleanup of expired VerificationTokens.
+        // Runs once per Google login — fire-and-forget, never blocks auth.
+        prisma.verificationToken
+          .deleteMany({ where: { expires: { lt: new Date() } } })
+          .catch(() => {})
       } catch (err) {
         console.error('[auth] signIn Google error:', err)
         return false

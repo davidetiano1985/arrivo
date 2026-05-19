@@ -53,16 +53,20 @@ jobs:
       # ── 4. Health check ──────────────────────────────────────────────────────
       - name: Health check
         run: |
-          sleep 8
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 15 \
-            https://arrivoapp.it/api/health 2>/dev/null || echo "000")
-          echo "HTTP status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "⚠ Health check returned $STATUS — check PM2 logs on VPS"
-          else
-            echo "✓ Site responding correctly"
-          fi
+          echo "Waiting for app to come back online..."
+          for i in 1 2 3 4 5; do
+            sleep 8
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 15 \
+              https://arrivoapp.it/api/health 2>/dev/null || echo "000")
+            echo "Attempt $i — HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "✓ Site healthy"
+              exit 0
+            fi
+          done
+          echo "⚠ Health check did not return 200 after 5 attempts"
+          exit 1
 
       # ── 5. Notify result ─────────────────────────────────────────────────────
       - name: Deploy summary

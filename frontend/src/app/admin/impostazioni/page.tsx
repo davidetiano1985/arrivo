@@ -38,6 +38,24 @@ export default async function ImpostazioniPage() {
           </div>
         </div>
 
+        {/* Deploy info */}
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-5">
+          <p className="mb-4 text-[10px] font-black uppercase tracking-widest text-white/30">Auto Deploy</p>
+          <div className="space-y-3 text-xs font-bold text-white/50">
+            {[
+              ['Flusso',    'git push origin main → GitHub Actions → VPS'],
+              ['Webhook',   'https://arrivoapp.it/webhook/deploy (POST)'],
+              ['GH Actions','.github/workflows/deploy.yml'],
+              ['Secret req.','VPS_SSH_KEY · VPS_HOST · VPS_USER in repo Settings'],
+            ].map(([k, v]) => (
+              <div key={k} className="flex flex-wrap items-start justify-between gap-2 border-b border-white/[0.05] pb-3 last:border-0">
+                <span className="text-white/40">{k}</span>
+                <span className="break-all text-right text-white/60">{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Action links */}
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-5">
           <p className="mb-4 text-[10px] font-black uppercase tracking-widest text-white/30">Azioni rapide</p>

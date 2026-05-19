@@ -39,5 +39,11 @@ export async function reimpostaPassword(
     },
   })
 
+  // [Fix M6] Opportunistic cleanup of expired VerificationTokens.
+  // Fire-and-forget: failure must never block the password reset flow.
+  prisma.verificationToken
+    .deleteMany({ where: { expires: { lt: new Date() } } })
+    .catch(() => {})
+
   redirect('/login?reset=1')
 }
