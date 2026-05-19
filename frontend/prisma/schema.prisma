@@ -85,6 +85,7 @@ model User {
   passwordResetToken   String?   @unique
   passwordResetExpires DateTime?
   profileIncomplete    Boolean   @default(false)
+  isTest               Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
