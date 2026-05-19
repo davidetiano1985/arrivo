@@ -86,6 +86,7 @@ model User {
   passwordResetExpires DateTime?
   profileIncomplete    Boolean   @default(false)
   isTest               Boolean   @default(false)
+  tokenVersion         Int       @default(0)    // incremented on suspend / forced-logout to invalidate active JWTs
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -148,6 +149,26 @@ model LocaleRequest {
   note      String?          @db.Text
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+}
+
+// ─── Alert sistema ───────────────────────────────────────────────────────────
+
+model SystemAlert {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  type        String    // 'security' | 'system' | 'data' | 'performance'
+  severity    String    // 'low' | 'medium' | 'high' | 'critical'
+  title       String
+  description String?   @db.Text
+  resolved    Boolean   @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?   // adminEmail
+  metadata    Json?
+
+  @@index([createdAt(sort: Desc)])
+  @@index([resolved])
+  @@index([severity])
 }
 
 // ─── Ristoranti ──────────────────────────────────────────────────────────────

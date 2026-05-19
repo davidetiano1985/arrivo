@@ -39,7 +39,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
       id: true, numericId: true, firstName: true, lastName: true, name: true,
       email: true, phone: true, role: true, suspended: true, emailVerified: true,
       image: true, password: true, createdAt: true, updatedAt: true,
-      loginAttempts: true,
+      loginAttempts: true, tokenVersion: true,
       accounts: { select: { provider: true } },
       adminLogsAsTarget: {
         select: { id: true, createdAt: true, adminEmail: true, action: true, details: true },
@@ -72,6 +72,11 @@ export default async function UserDetailPage({ params }: { params: { id: string 
     RESET_PASSWORD:       'Reset password',
     RESET_LOGIN_ATTEMPTS: 'Reset tentativi',
     CREATE_USER:          'Creazione account',
+    APPROVA_RICHIESTA:    'Approva richiesta locale',
+    RIFIUTA_RICHIESTA:    'Rifiuta richiesta locale',
+    RESOLVE_ALERT:        'Risolvi alert',
+    CREATE_ALERT:         'Crea alert',
+    FORCE_LOGOUT:         'Forza logout',
   }
 
   return (
@@ -104,6 +109,14 @@ export default async function UserDetailPage({ params }: { params: { id: string 
               <span className={`rounded-full px-3 py-1 text-xs font-black ${user.suspended ? 'bg-red-600 text-white' : 'bg-emerald-500 text-white'}`}>
                 {user.suspended ? 'Sospeso' : 'Attivo'}
               </span>
+              {!isSelf && (
+                <Link
+                  href={`/admin/users/${user.id}/impersonate`}
+                  className="mt-1 rounded-xl border border-black/20 bg-black/10 px-3 py-1.5 text-xs font-black text-black transition hover:bg-black/20"
+                >
+                  👁 Visualizza come utente
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -128,6 +141,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
                 ['Registrato il',       fmt(user.createdAt)],
                 ['Ultimo aggiornamento', fmt(user.updatedAt)],
                 ['Tentativi login fail.', String(user.loginAttempts)],
+              ['Token version',        String(user.tokenVersion)],
               ].map(([label, value]) => (
                 <div key={label} className="flex flex-col gap-0.5 border-b border-black/5 pb-2 last:border-0 last:pb-0">
                   <dt className="text-xs font-black uppercase text-black/35">{label}</dt>
@@ -151,6 +165,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
               suspended={user.suspended}
               hasPassword={!!user.password}
               loginAttempts={user.loginAttempts}
+              tokenVersion={user.tokenVersion}
             />
           </div>
         </div>

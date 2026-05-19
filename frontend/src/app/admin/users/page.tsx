@@ -55,7 +55,11 @@ export default async function AdminUsersPage({
   if (!session || sessionRole !== 'super_admin') redirect('/login')
 
   const page    = Math.max(1, parseInt(searchParams.page    ?? '1',  10))
-  const perPage = parseInt(searchParams.perPage ?? '25', 10)   // 0 = all
+  // perPage=0 ("Tutti") removed — OOM risk at scale. Cap at 100.
+  const VALID_PER_PAGE = [25, 50, 100]
+  const perPage = VALID_PER_PAGE.includes(parseInt(searchParams.perPage ?? '25', 10))
+    ? parseInt(searchParams.perPage ?? '25', 10)
+    : 25
   const search  = searchParams.search?.trim() ?? ''
   const roleFilter   = searchParams.role   ?? ''
   const statusFilter = searchParams.status ?? ''

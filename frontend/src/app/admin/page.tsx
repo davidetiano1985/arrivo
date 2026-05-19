@@ -1,139 +1,111 @@
-import Link from "next/link";
-import { getServerSession } from "next-auth";
+import { getServerSession } from 'next-auth'
+import Link from 'next/link'
 
-import { authOptions } from "../../lib/auth";
-import { prisma } from "../../lib/prisma";
+import { authOptions } from '@/lib/auth'
+import { prisma }      from '@/lib/prisma'
+import AdminControlRoom from '@/components/admin/AdminControlRoom'
 
-export default async function AdminPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) return null;
+export default async function AdminDashboardPage() {
+  const session = await getServerSession(authOptions)
+  if (!session) return null
 
   const firstName = (session.user as { firstName?: string })?.firstName
-  const name = firstName || session.user?.name?.split(' ')[0] || session.user?.email || 'Admin'
-  const role = (session.user as { role: string }).role;
+  const name = firstName || session.user?.name?.split(' ')[0] || 'Admin'
 
-  const [totalUsers, activeUsers, suspendedUsers, pendingRichieste] = await Promise.all([
+  const now            = new Date()
+  const tenMinutesAgo  = new Date(now.getTime() -  10 * 60 * 1000)
+  const oneHourAgo     = new Date(now.getTime() -  60 * 60 * 1000)
+  const twentyFourHAgo = new Date(now.getTime() -  24 * 60 * 60 * 1000)
+
+  const [
+    totalUsers, newUsers24h, suspendedCount,
+    pendingRequests,
+    failedLoginsLastHour, successLoginsLastHour,
+    failedLoginsTenMin,
+    usersHighAttempts,
+    activeAlerts, criticalAlerts,
+    totalRestaurants,
+    recentEvents,
+  ] = await Promise.all([
     prisma.user.count(),
-    prisma.user.count({ where: { suspended: false } }),
+    prisma.user.count({ where: { createdAt: { gte: twentyFourHAgo } } }),
     prisma.user.count({ where: { suspended: true } }),
     prisma.localeRequest.count({ where: { status: 'pending' } }),
-  ]);
+    prisma.loginEvent.count({ where: { success: false, createdAt: { gte: oneHourAgo } } }),
+    prisma.loginEvent.count({ where: { success: true,  createdAt: { gte: oneHourAgo } } }),
+    prisma.loginEvent.count({ where: { success: false, createdAt: { gte: tenMinutesAgo } } }),
+    prisma.user.count({ where: { loginAttempts: { gte: 5 } } }),
+    prisma.systemAlert.count({ where: { resolved: false } }),
+    prisma.systemAlert.count({ where: { resolved: false, severity: 'critical' } }),
+    prisma.restaurant.count(),
+    prisma.loginEvent.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: {
+        id: true, createdAt: true, success: true,
+        ipAddress: true, provider: true,
+        user: { select: { email: true, firstName: true } },
+      },
+    }),
+  ])
+
+  let systemStatus: 'green' | 'yellow' | 'red' = 'green'
+  if (criticalAlerts > 0 || failedLoginsTenMin > 10) systemStatus = 'red'
+  else if (activeAlerts > 0 || failedLoginsTenMin > 3 || pendingRequests > 0 || usersHighAttempts > 0) systemStatus = 'yellow'
+
+  const initialData = {
+    totalUsers, newUsers24h, suspendedCount,
+    pendingRequests,
+    failedLoginsLastHour, successLoginsLastHour,
+    failedLoginsTenMin,
+    usersHighAttempts,
+    activeAlerts, criticalAlerts,
+    totalRestaurants,
+    systemStatus,
+    recentEvents: recentEvents.map((e) => ({
+      id:        e.id,
+      createdAt: e.createdAt.toISOString(),
+      success:   e.success,
+      ipAddress: e.ipAddress,
+      provider:  e.provider,
+      userEmail: e.user?.email ?? null,
+      userName:  e.user?.firstName ?? null,
+    })),
+  }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-5 sm:py-8">
-      <section className="mx-auto w-full max-w-3xl">
-        <div className="rounded-[2rem] bg-[#ff6b00] p-5 sm:p-6">
-          <p className="text-sm font-black uppercase text-black/60">
-            Pannello super admin
-          </p>
-          <h1 className="mt-3 break-words text-3xl font-black tracking-normal sm:text-4xl">
-            Benvenuto {name}
-          </h1>
-          <p className="mt-2 text-base font-bold text-white/90">
-            ruolo: {role}
-          </p>
-        </div>
+    <main className="min-h-screen w-full overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-7xl">
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <article className="rounded-2xl bg-white p-4 text-black">
-            <p className="text-xs font-black uppercase text-black/45">
-              Utenti totali
-            </p>
-            <p className="mt-2 text-3xl font-black">{totalUsers}</p>
-          </article>
-          <article className="rounded-2xl bg-white p-4 text-black">
-            <p className="text-xs font-black uppercase text-black/45">
-              Attivi
-            </p>
-            <p className="mt-2 text-3xl font-black">{activeUsers}</p>
-          </article>
-          <article className="rounded-2xl bg-white p-4 text-black">
-            <p className="text-xs font-black uppercase text-black/45">
-              Sospesi
-            </p>
-            <p className="mt-2 text-3xl font-black">{suspendedUsers}</p>
-          </article>
-        </div>
-
-        <div className="mt-6">
-          <h2 className="text-2xl font-black">Sezioni admin</h2>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Link
-              className="group block rounded-2xl border border-white/10 bg-white/[0.06] p-5 text-white shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:border-[#ff6b00]/70 hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-[#ff6b00] focus:ring-offset-2 focus:ring-offset-black"
-              href="/admin/users"
-            >
-              <div className="flex h-full flex-col justify-between gap-5">
-                <div>
-                  <p className="text-xs font-black uppercase text-[#ff6b00]">
-                    Controlli piattaforma
-                  </p>
-                  <h3 className="mt-2 text-xl font-black">Utenti e accessi</h3>
-                  <p className="mt-2 text-sm font-bold leading-6 text-white/70">
-                    Gestisci utenti, ruoli e accessi della piattaforma
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="break-all text-xs font-black uppercase text-white/45">/admin/users</span>
-                  <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
-                    Apri
-                  </span>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              className="group block rounded-2xl border border-white/10 bg-white/[0.06] p-5 text-white shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:border-[#ff6b00]/70 hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-[#ff6b00] focus:ring-offset-2 focus:ring-offset-black"
-              href="/admin/richieste"
-            >
-              <div className="flex h-full flex-col justify-between gap-5">
-                <div>
-                  <p className="text-xs font-black uppercase text-[#ff6b00]">
-                    Locali
-                  </p>
-                  <h3 className="mt-2 text-xl font-black">Richieste locali</h3>
-                  <p className="mt-2 text-sm font-bold leading-6 text-white/70">
-                    Approva o rifiuta le richieste di registrazione dei locali
-                  </p>
-                  {pendingRichieste > 0 && (
-                    <span className="mt-3 inline-block rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-black">
-                      {pendingRichieste} in attesa
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="break-all text-xs font-black uppercase text-white/45">/admin/richieste</span>
-                  <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
-                    Apri
-                  </span>
-                </div>
-              </div>
-            </Link>
-            <Link
-              className="group block rounded-2xl border border-white/10 bg-white/[0.06] p-5 text-white shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:border-[#ff6b00]/70 hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-[#ff6b00] focus:ring-offset-2 focus:ring-offset-black"
-              href="/admin/log"
-            >
-              <div className="flex h-full flex-col justify-between gap-5">
-                <div>
-                  <p className="text-xs font-black uppercase text-[#ff6b00]">
-                    Sicurezza
-                  </p>
-                  <h3 className="mt-2 text-xl font-black">Log admin</h3>
-                  <p className="mt-2 text-sm font-bold leading-6 text-white/70">
-                    Audit trail immutabile di tutte le azioni super admin
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="break-all text-xs font-black uppercase text-white/45">/admin/log</span>
-                  <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
-                    Apri
-                  </span>
-                </div>
-              </div>
-            </Link>
+        {/* Header */}
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-[#ff6b00]">Super Admin</p>
+            <h1 className="mt-1 text-3xl font-black">
+              Control Room
+              <span className="ml-3 font-bold text-white/30 text-xl">— {name}</span>
+            </h1>
           </div>
+          <Link
+            href="/admin/alert"
+            className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-xs font-black text-white/60 transition hover:border-[#ff6b00]/50 hover:text-white"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            Alert Center
+            {activeAlerts > 0 && (
+              <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">
+                {activeAlerts}
+              </span>
+            )}
+          </Link>
         </div>
-      </section>
+
+        {/* Live dashboard — client component handles polling */}
+        <AdminControlRoom initialData={initialData} />
+      </div>
     </main>
-  );
+  )
 }

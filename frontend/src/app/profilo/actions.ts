@@ -22,7 +22,12 @@ export async function aggiornaProfilo(
 
   await prisma.user.update({
     where: { id },
-    data: { firstName: nome, lastName: cognome || null, name },
+    data: {
+      firstName:        nome,
+      lastName:         cognome || null,
+      name,
+      profileIncomplete: false, // [Fix H2] clear the incomplete flag when profile is updated
+    },
   })
 
   return { ok: true }

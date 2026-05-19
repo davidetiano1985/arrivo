@@ -8,9 +8,12 @@ import {
   resetPassword,
   resetTentativiLogin,
   eliminaUtente,
+  forzaLogout,
 } from '../actions'
 
-const RUOLI = ['super_admin', 'gestore_locale', 'manager', 'staff', 'cliente'] as const
+// [Fix M1] super_admin excluded from dropdown. A super_admin can still HAVE
+// the role (shown as-is), but promotion via the UI is blocked.
+const RUOLI = ['gestore_locale', 'manager', 'staff', 'cliente'] as const
 
 type Props = {
   userId: string
@@ -19,6 +22,7 @@ type Props = {
   suspended: boolean
   hasPassword: boolean
   loginAttempts: number
+  tokenVersion: number
 }
 
 type ModalConfig = {
@@ -36,12 +40,14 @@ export default function UserDetailClient({
   suspended,
   hasPassword,
   loginAttempts,
+  tokenVersion,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [role, setRole] = useState(currentRole)
   const [isSuspended, setIsSuspended] = useState(suspended)
   const [attempts, setAttempts] = useState(loginAttempts)
+  const [tv, setTv] = useState(tokenVersion)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [modal, setModal] = useState<ModalConfig>(null)
 
@@ -119,6 +125,21 @@ export default function UserDetailClient({
         const res = await resetTentativiLogin(userId)
         if (res?.error) showToast(res.error, false)
         else { setAttempts(0); showToast('Tentativi azzerati.', true); startTransition(() => router.refresh()) }
+      },
+    })
+  }
+
+  // ── Force logout ─────────────────────────────────────────────────────────────
+  function handleForzaLogout() {
+    confirm({
+      title:        'Forza logout',
+      message:      'Il JWT verrà invalidato. L\'utente verrà disconnesso entro 5 minuti senza essere sospeso.',
+      confirmLabel: 'Forza logout',
+      destructive:  false,
+      onConfirm: async () => {
+        const res = await forzaLogout(userId)
+        if (res?.error) showToast(res.error, false)
+        else { setTv((v) => v + 1); showToast('JWT invalidato. L\'utente verrà disconnesso entro 5 min.', true); startTransition(() => router.refresh()) }
       },
     })
   }
@@ -217,6 +238,16 @@ export default function UserDetailClient({
             >
               {isSuspended ? 'Riattiva account' : 'Sospendi account'}
             </button>
+            {!isSelf && (
+              <button
+                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-black transition hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700 disabled:opacity-50"
+                disabled={loading}
+                onClick={handleForzaLogout}
+                title={`Invalida JWT senza sospendere · tokenVersion: ${tv}`}
+              >
+                ⏏ Forza logout
+              </button>
+            )}
           </div>
         </div>
 

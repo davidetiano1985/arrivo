@@ -6,9 +6,19 @@ import GoogleProvider from 'next-auth/providers/google'
 
 import { prisma } from './prisma'
 
+// ── How long a JWT stays valid ────────────────────────────────────────────────
+// Previously missing → NextAuth defaulted to 30 days (!)
+// Now explicit: 24 hours. [Fix H4]
+const JWT_MAX_AGE = 24 * 60 * 60 // seconds
+
+// ── How often we re-check the DB for suspension / tokenVersion change ─────────
+// Balance between security (fast detection) and DB load.
+// 5 min = max window a suspended user could still act.  [Fix H1]
+const SUSPENSION_RECHECK_MS = 5 * 60 * 1000
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: JWT_MAX_AGE },
   pages: { signIn: '/login', error: '/login' },
 
   providers: [
@@ -20,9 +30,6 @@ export const authOptions: NextAuthOptions = {
         params: {
           // 'consent' forces Google to show the full authorization screen on
           // every login — no silent re-authorization, no "bypass" perception.
-          // Every attempt is visually identical: account picker + allow button.
-          // More explicit than 'select_account' (which skips the allow step
-          // if the user has previously authorized this app).
           prompt: 'consent',
           access_type: 'online',
         },
@@ -93,12 +100,13 @@ export const authOptions: NextAuthOptions = {
         ]).catch(() => {})
 
         return {
-          id:          user.id,
-          email:       user.email,
-          name:        user.name ?? '',
-          role:        user.role,
-          firstName:   user.firstName ?? '',
-          hasPassword: true,
+          id:           user.id,
+          email:        user.email,
+          name:         user.name ?? '',
+          role:         user.role,
+          firstName:    user.firstName ?? '',
+          hasPassword:  true,
+          tokenVersion: user.tokenVersion, // [Fix H1] stored in JWT for revocation checks
         }
       },
     }),
@@ -114,7 +122,6 @@ export const authOptions: NextAuthOptions = {
       if (!email) return false
 
       try {
-        // Single query reused for auth logic, name save and LoginEvent.
         const dbUser = await prisma.user.findUnique({ where: { email } })
 
         // Block suspended users before anything else
@@ -129,16 +136,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (dbUser) {
-          // ── Save nome + cognome from Google profile ─────────────────────
-          // SOURCE: profile.given_name / profile.family_name (OAuth spec fields).
-          // If either is missing → mark profileIncomplete so the guard popup
-          // blocks the user until they fill in the data manually.
           const p = profile as { given_name?: string; family_name?: string } | undefined
           const gFirst = p?.given_name?.trim()  ?? ''
           const gLast  = p?.family_name?.trim() ?? ''
 
-          // Prefer Google-provided value; fall back to whatever is already in DB
-          // so manually-completed profiles are never overwritten with empty strings.
           const firstName = gFirst || (dbUser.firstName ?? '')
           const lastName  = gLast  || (dbUser.lastName  ?? '')
           const profileIncomplete = !firstName || !lastName
@@ -153,7 +154,6 @@ export const authOptions: NextAuthOptions = {
             },
           }).catch((e) => console.error('[auth] signIn name update error:', e))
 
-          // Log successful Google login
           await prisma.loginEvent.create({
             data: { userId: dbUser.id, success: true, provider: 'google' },
           }).catch(() => {})
@@ -168,16 +168,19 @@ export const authOptions: NextAuthOptions = {
 
     // ── jwt ────────────────────────────────────────────────────────────────
     async jwt({ token, user, trigger }) {
-      // Session refresh triggered by client update()
+      // ── Trigger: client called update() ───────────────────────────────────
       if (trigger === 'update') {
         const id = token.id as string | undefined
         if (id) {
           try {
             const dbUser = await prisma.user.findUnique({ where: { id } })
             if (dbUser) {
-              token.firstName        = dbUser.firstName        ?? ''
-              token.role             = dbUser.role
+              token.firstName         = dbUser.firstName        ?? ''
+              token.role              = dbUser.role
               token.profileIncomplete = dbUser.profileIncomplete ?? false
+              token.tokenVersion      = dbUser.tokenVersion       // [Fix H1]
+              token.suspended         = dbUser.suspended
+              if (dbUser.suspended) token.invalid = true
             }
           } catch (err) {
             console.error('[auth] jwt update lookup error:', err)
@@ -186,45 +189,85 @@ export const authOptions: NextAuthOptions = {
         return token
       }
 
-      // First sign-in for this session
+      // ── Initial sign-in ───────────────────────────────────────────────────
       if (user) {
-        // Credentials: role + firstName are already on the user object
         const u = user as {
           role?: string
           firstName?: string
           hasPassword?: boolean
           email?: string
+          tokenVersion?: number // [Fix H1]
         }
 
+        // Credentials path — role is already on the user object
         if (u.role) {
           token.id               = user.id
           token.role             = u.role
           token.firstName        = u.firstName ?? ''
           token.hasPassword      = u.hasPassword ?? false
-          token.profileIncomplete = false   // credentials users always have firstName/lastName
+          token.profileIncomplete = false
+          token.tokenVersion     = u.tokenVersion ?? 0 // [Fix H1]
+          token.sessionCheck     = Date.now()
           return token
         }
 
-        // Google OAuth: use email as the single source of truth — never user.id
+        // Google OAuth path — resolve by email
         const email = u.email?.toLowerCase().trim() ?? (token.email as string | undefined)
         if (!email) return token
 
         try {
-          // firstName/lastName have already been saved by the signIn callback above;
-          // just read the final DB state (no profile manipulation needed here).
           const dbUser = await prisma.user.findUnique({ where: { email } })
-
           token.id               = dbUser?.id          ?? user.id
           token.role             = dbUser?.role         ?? 'cliente'
           token.firstName        = dbUser?.firstName    ?? ''
           token.hasPassword      = dbUser?.password     ? true : false
           token.profileIncomplete = dbUser?.profileIncomplete ?? false
+          token.tokenVersion     = dbUser?.tokenVersion ?? 0 // [Fix H1]
+          token.sessionCheck     = Date.now()
         } catch (err) {
           console.error('[auth] jwt Google lookup error:', err)
           token.role             = (token.role             as string)  ?? 'cliente'
           token.firstName        = (token.firstName        as string)  ?? ''
           token.hasPassword      = (token.hasPassword      as boolean) ?? false
           token.profileIncomplete = (token.profileIncomplete as boolean) ?? false
+          token.tokenVersion     = (token.tokenVersion     as number)  ?? 0
+        }
+
+        return token
+      }
+
+      // ── Periodic suspension + forced-logout check ─────────────────────────
+      // [Fix H1] Runs at most once every SUSPENSION_RECHECK_MS per session.
+      // Detects: admin suspended the user, or tokenVersion was incremented
+      // (forced logout). Fail-open: a DB timeout won't lock out the user.
+      const tokenId = token.id as string | undefined
+      if (tokenId && !token.invalid) {
+        const now       = Date.now()
+        const lastCheck = (token.sessionCheck as number) ?? 0
+
+        if (now - lastCheck > SUSPENSION_RECHECK_MS) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where:  { id: tokenId },
+              select: { suspended: true, tokenVersion: true },
+            })
+            if (dbUser) {
+              const storedVersion = token.tokenVersion as number | undefined
+              if (
+                dbUser.suspended ||
+                (storedVersion !== undefined && dbUser.tokenVersion !== storedVersion)
+              ) {
+                // Poison this token — session callback will clear the user,
+                // all auth guards will redirect to login.
+                return { ...token, invalid: true }
+              }
+              // Still valid — update checkpoint
+              token.sessionCheck = now
+            }
+          } catch (err) {
+            console.error('[auth] jwt suspension check error:', err)
+            // Fail open: don't block user on DB timeout
+          }
         }
       }
 
@@ -233,6 +276,15 @@ export const authOptions: NextAuthOptions = {
 
     // ── session ────────────────────────────────────────────────────────────
     session({ session, token }) {
+      // [Fix H1] Invalidated session: clear role + id so every auth guard
+      // redirects to login on the next server render.
+      if (token.invalid) {
+        const u = session.user as Record<string, unknown>
+        u.role  = ''
+        u.id    = ''
+        return session
+      }
+
       if (session.user) {
         const u = session.user as {
           role: string

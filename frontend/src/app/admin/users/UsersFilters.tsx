@@ -5,7 +5,7 @@ import { useCallback, useTransition, useState, useEffect } from 'react'
 import Link from 'next/link'
 
 const RUOLI = ['', 'super_admin', 'gestore_locale', 'manager', 'staff', 'cliente'] as const
-const PER_PAGE_OPTIONS = [25, 50, 100, 0] as const // 0 = tutti
+const PER_PAGE_OPTIONS = [25, 50, 100] as const
 
 export default function UsersFilters({
   totalUsers,
@@ -104,7 +104,6 @@ export default function UsersFilters({
           <option value={25}>25 per pagina</option>
           <option value={50}>50 per pagina</option>
           <option value={100}>100 per pagina</option>
-          <option value={0}>Tutti</option>
         </select>
 
         {hasFilters && (

@@ -4,8 +4,17 @@ import { revalidatePath } from 'next/cache'
 import { getServerSession } from 'next-auth'
 
 import { sendRichiestaApprovataEmail, sendRichiestaRifiutataEmail } from '@/lib/email'
-import { prisma } from '@/lib/prisma'
-import { authOptions } from '@/lib/auth'
+import { logAdminAction } from '@/lib/adminLog'
+import { prisma }         from '@/lib/prisma'
+import { authOptions }    from '@/lib/auth'
+
+async function verificaSuperAdmin() {
+  const session = await getServerSession(authOptions)
+  if (!session) throw new Error('Non autenticato')
+  const u = session.user as { role: string; id: string; email?: string }
+  if (u.role !== 'super_admin') throw new Error('Accesso negato')
+  return { id: u.id, email: u.email ?? 'admin@arrivo' }
+}
 
 function slugify(str: string): string {
   return str
@@ -16,24 +25,28 @@ function slugify(str: string): string {
     .replace(/^-|-$/g, '')
 }
 
+// Bounded uniqueSlug — max 50 iterations to avoid infinite loop
 async function uniqueSlug(base: string): Promise<string> {
   const slug = slugify(base)
   const exists = await prisma.restaurant.findUnique({ where: { slug } })
   if (!exists) return slug
-  let i = 2
-  while (true) {
+
+  for (let i = 2; i <= 50; i++) {
     const candidate = `${slug}-${i}`
     const dup = await prisma.restaurant.findUnique({ where: { slug: candidate } })
     if (!dup) return candidate
-    i++
   }
+  // Fallback: slug + timestamp
+  return `${slug}-${Date.now()}`
 }
 
 export async function approvaRichiesta(
   id: string,
 ): Promise<{ error: string } | void> {
-  const session = await getServerSession(authOptions)
-  if ((session?.user as { role?: string })?.role !== 'super_admin') {
+  let admin: { id: string; email: string }
+  try {
+    admin = await verificaSuperAdmin()
+  } catch {
     return { error: 'Non autorizzato.' }
   }
 
@@ -41,35 +54,40 @@ export async function approvaRichiesta(
   if (!richiesta) return { error: 'Richiesta non trovata.' }
   if (richiesta.status !== 'pending') return { error: 'Richiesta già elaborata.' }
 
-  // Collega al User esistente se presente
   const utente = await prisma.user.findUnique({ where: { email: richiesta.email } })
-
-  const slug = await uniqueSlug(richiesta.nome)
+  const slug   = await uniqueSlug(richiesta.nome)
 
   await prisma.$transaction([
-    // Crea il record Restaurant
     prisma.restaurant.create({
       data: {
-        name: richiesta.nome,
+        name:    richiesta.nome,
         slug,
-        tipo: richiesta.tipo ?? undefined,
-        city: richiesta.citta,
-        phone: richiesta.telefono ?? undefined,
-        email: richiesta.email,
-        status: 'approved',
+        tipo:    richiesta.tipo    ?? undefined,
+        city:    richiesta.citta,
+        phone:   richiesta.telefono ?? undefined,
+        email:   richiesta.email,
+        status:  'approved',
         ownerId: utente?.id ?? null,
       },
     }),
-    // Aggiorna LocaleRequest
     prisma.localeRequest.update({
       where: { id },
-      data: { status: 'approved' },
+      data:  { status: 'approved' },
     }),
-    // Se esiste l'utente, promuovi a gestore_locale
     ...(utente
       ? [prisma.user.update({ where: { id: utente.id }, data: { role: 'gestore_locale' } })]
       : []),
   ])
+
+  // ── AdminLog (previously missing — audit fix) ─────────────────────────────
+  await logAdminAction({
+    adminId:     admin.id,
+    adminEmail:  admin.email,
+    targetEmail: richiesta.email,
+    targetId:    utente?.id,
+    action:      'APPROVA_RICHIESTA',
+    details:     `Locale: ${richiesta.nome} (${richiesta.citta})${utente ? ` — Utente promosso a gestore_locale` : ''}`,
+  })
 
   try {
     await sendRichiestaApprovataEmail(richiesta.email, richiesta.nome)
@@ -78,14 +96,17 @@ export async function approvaRichiesta(
   }
 
   revalidatePath('/admin/richieste')
+  revalidatePath('/admin')
 }
 
 export async function rifiutaRichiesta(
   id: string,
   nota?: string,
 ): Promise<{ error: string } | void> {
-  const session = await getServerSession(authOptions)
-  if ((session?.user as { role?: string })?.role !== 'super_admin') {
+  let admin: { id: string; email: string }
+  try {
+    admin = await verificaSuperAdmin()
+  } catch {
     return { error: 'Non autorizzato.' }
   }
 
@@ -95,7 +116,16 @@ export async function rifiutaRichiesta(
 
   await prisma.localeRequest.update({
     where: { id },
-    data: { status: 'rejected', note: nota || null },
+    data:  { status: 'rejected', note: nota || null },
+  })
+
+  // ── AdminLog (previously missing — audit fix) ─────────────────────────────
+  await logAdminAction({
+    adminId:     admin.id,
+    adminEmail:  admin.email,
+    targetEmail: richiesta.email,
+    action:      'RIFIUTA_RICHIESTA',
+    details:     `Locale: ${richiesta.nome} (${richiesta.citta})${nota ? ` — Nota: ${nota}` : ''}`,
   })
 
   try {
@@ -105,4 +135,5 @@ export async function rifiutaRichiesta(
   }
 
   revalidatePath('/admin/richieste')
+  revalidatePath('/admin')
 }

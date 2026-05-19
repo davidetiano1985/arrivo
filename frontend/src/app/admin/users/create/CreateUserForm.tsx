@@ -4,7 +4,9 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { creaUtente } from '../actions'
 
-const RUOLI = ['cliente', 'staff', 'manager', 'gestore_locale', 'super_admin'] as const
+// [Fix M1] super_admin excluded — cannot be assigned via the UI form.
+// Use direct DB access or a dedicated super-admin promotion flow.
+const RUOLI = ['cliente', 'staff', 'manager', 'gestore_locale'] as const
 
 export default function CreateUserForm() {
   const router = useRouter()

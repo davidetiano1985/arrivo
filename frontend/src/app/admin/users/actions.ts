@@ -68,7 +68,16 @@ export async function togglaSospensione(
     const target = await prisma.user.findUnique({ where: { id: userId } })
     if (!target) return { error: 'Utente non trovato' }
 
-    await prisma.user.update({ where: { id: userId }, data: { suspended: sospendi } })
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        suspended: sospendi,
+        // [Fix H1] Increment tokenVersion on suspension → invalidates active JWTs
+        // within SUSPENSION_RECHECK_MS (5 min). Unsuspend does NOT reset it so
+        // the user must log in fresh after being re-activated.
+        ...(sospendi ? { tokenVersion: { increment: 1 } } : {}),
+      },
+    })
 
     await logAdminAction({
       adminId: admin.id,
@@ -142,6 +151,38 @@ export async function resetTentativiLogin(userId: string): Promise<{ error?: str
       targetEmail: target.email,
       action: 'RESET_LOGIN_ATTEMPTS',
       details: `Tentativi azzerati (erano: ${target.loginAttempts})`,
+    })
+
+    revalidatePath(`/admin/users/${userId}`)
+    return {}
+  } catch (err) {
+    return { error: (err as Error).message }
+  }
+}
+
+// ── Forza logout (invalida JWT senza sospendere) ─────────────────────────────
+
+export async function forzaLogout(userId: string): Promise<{ error?: string }> {
+  try {
+    const admin = await verificaSuperAdmin()
+
+    const target = await prisma.user.findUnique({ where: { id: userId } })
+    if (!target) return { error: 'Utente non trovato' }
+
+    // Increment tokenVersion → periodic check in JWT callback will detect mismatch
+    // and poison the token within 5 minutes.
+    await prisma.user.update({
+      where: { id: userId },
+      data:  { tokenVersion: { increment: 1 } },
+    })
+
+    await logAdminAction({
+      adminId:    admin.id,
+      adminEmail: admin.email,
+      targetId:   userId,
+      targetEmail: target.email,
+      action:     'FORCE_LOGOUT',
+      details:    'JWT invalidato — l\'utente verrà disconnesso entro 5 minuti',
     })
 
     revalidatePath(`/admin/users/${userId}`)

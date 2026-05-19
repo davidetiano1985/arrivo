@@ -13,6 +13,11 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   RESET_PASSWORD:       { label: 'Reset password',       color: 'bg-yellow-100 text-yellow-800'  },
   RESET_LOGIN_ATTEMPTS: { label: 'Reset tentativi',      color: 'bg-gray-100 text-gray-700'      },
   CREATE_USER:          { label: 'Creazione utente',     color: 'bg-purple-100 text-purple-800'  },
+  APPROVA_RICHIESTA:    { label: 'Approva richiesta',    color: 'bg-emerald-100 text-emerald-800' },
+  RIFIUTA_RICHIESTA:    { label: 'Rifiuta richiesta',    color: 'bg-red-100 text-red-700'         },
+  RESOLVE_ALERT:        { label: 'Risolvi alert',        color: 'bg-amber-100 text-amber-800'     },
+  CREATE_ALERT:         { label: 'Crea alert',           color: 'bg-orange-100 text-orange-800'   },
+  FORCE_LOGOUT:         { label: 'Forza logout',         color: 'bg-violet-100 text-violet-800'   },
 }
 
 function fmt(d: Date) {

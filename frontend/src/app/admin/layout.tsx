@@ -1,83 +1,72 @@
-import Link from "next/link";
-import { getServerSession } from "next-auth";
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react'
+import { getServerSession } from 'next-auth'
 
-import AccessoNegato from "../../components/AccessoNegato";
-import { authOptions } from "../../lib/auth";
-import LogoutButton from "./LogoutButton";
-
-type AdminLink = { href: string; label: string; onlySuperAdmin?: boolean };
-
-const adminLinks: AdminLink[] = [
-  { href: "/admin",           label: "Pannello"                              },
-  { href: "/admin/users",     label: "Utenti",     onlySuperAdmin: true      },
-  { href: "/admin/richieste", label: "Richieste"                             },
-  { href: "/admin/log",       label: "Log admin",  onlySuperAdmin: true      },
-];
+import AccessoNegato from '@/components/AccessoNegato'
+import AdminSidebar  from '@/components/admin/AdminSidebar'
+import { authOptions } from '@/lib/auth'
+import { prisma }      from '@/lib/prisma'
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions)
 
-  if (!session) {
-    return <AccessoNegato tipo="non_autenticato" />;
+  if (!session) return <AccessoNegato tipo="non_autenticato" />
+
+  const role = (session.user as { role: string }).role
+  if (role !== 'super_admin') return <AccessoNegato tipo="non_autorizzato" ruolo={role} />
+
+  // ── Fetch initial stats for sidebar badges ─────────────────────────────────
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+
+  const [
+    totalUsers,
+    suspendedCount,
+    pendingRequests,
+    activeAlerts,
+    criticalAlerts,
+    usersHighAttempts,
+    failedLoginsTenMin,
+    totalRestaurants,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { suspended: true } }),
+    prisma.localeRequest.count({ where: { status: 'pending' } }),
+    prisma.systemAlert.count({ where: { resolved: false } }),
+    prisma.systemAlert.count({ where: { resolved: false, severity: 'critical' } }),
+    prisma.user.count({ where: { loginAttempts: { gte: 5 } } }),
+    prisma.loginEvent.count({ where: { success: false, createdAt: { gte: tenMinutesAgo } } }),
+    prisma.restaurant.count(),
+  ])
+
+  let systemStatus: 'green' | 'yellow' | 'red' = 'green'
+  if (criticalAlerts > 0 || failedLoginsTenMin > 10) {
+    systemStatus = 'red'
+  } else if (
+    activeAlerts > 0 || failedLoginsTenMin > 3 ||
+    pendingRequests > 0 || usersHighAttempts > 0
+  ) {
+    systemStatus = 'yellow'
   }
 
-  const role = (session.user as { role: string }).role;
-
-  if (role !== "super_admin") {
-    return <AccessoNegato tipo="non_autorizzato" ruolo={role} />;
-  }
-
-  const visibleLinks = adminLinks.filter(
-    (link) => !link.onlySuperAdmin || role === "super_admin"
-  );
+  const adminName  = (session.user as { firstName?: string })?.firstName
+    || session.user?.name?.split(' ')[0]
+    || 'Admin'
+  const adminEmail = session.user?.email ?? ''
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black text-white">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-black px-6 py-7 md:flex md:flex-col">
-        <Link className="flex items-center gap-2" href="/admin">
-          <img src="/arrivo_logo.svg" alt="Arrivo" className="h-7 w-auto" />
-          <span className="text-sm font-black text-[#ff6b00]">Admin</span>
-        </Link>
-
-        <nav className="mt-8 grid gap-2">
-          {visibleLinks.map((link) => (
-            <Link
-              className="rounded-2xl px-4 py-3 text-sm font-black text-white/70 transition hover:bg-[#ff6b00] hover:text-black"
-              href={link.href}
-              key={link.href}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="mt-auto border-t border-white/10 pt-4">
-          <LogoutButton />
-        </div>
-      </aside>
-
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-black/95 px-4 py-4 backdrop-blur md:hidden">
-        <Link className="flex items-center gap-2" href="/admin">
-          <img src="/arrivo_logo.svg" alt="Arrivo" className="h-6 w-auto" />
-          <span className="text-sm font-black text-[#ff6b00]">Admin</span>
-        </Link>
-
-        <nav className="mt-4 flex flex-wrap gap-2">
-          {visibleLinks.map((link) => (
-            <Link
-              className="rounded-full border border-white/10 px-4 py-2 text-sm font-black text-white/75 transition hover:border-[#ff6b00] hover:text-[#ff6b00]"
-              href={link.href}
-              key={link.href}
-            >
-              {link.href === "/admin" ? "Pannello" : link.label}
-            </Link>
-          ))}
-          <LogoutButton mobile />
-        </nav>
-      </header>
-
-      <div className="md:pl-64">{children}</div>
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {/* Client component — manages sidebar + command palette + live polling */}
+      <AdminSidebar
+        adminName={adminName}
+        adminEmail={adminEmail}
+        initialStats={{
+          totalUsers, suspendedCount, pendingRequests,
+          activeAlerts, criticalAlerts, usersHighAttempts,
+          failedLoginsTenMin, totalRestaurants, systemStatus,
+        }}
+      />
+      <div className="md:pl-72">
+        {children}
+      </div>
     </div>
-  );
+  )
 }
