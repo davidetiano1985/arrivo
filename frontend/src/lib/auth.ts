@@ -10,17 +10,18 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
   pages: { signIn: '/login', error: '/login' },
+
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // allows linking Google to an existing email/password account
       allowDangerousEmailAccountLinking: true,
     }),
+
     CredentialsProvider({
       name: 'credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        email:    { label: 'Email',    type: 'email'    },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
@@ -36,80 +37,110 @@ export const authOptions: NextAuthOptions = {
         if (!valid) return null
 
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name ?? '',
-          role: user.role,
-          firstName: user.firstName ?? '',
+          id:          user.id,
+          email:       user.email,
+          name:        user.name ?? '',
+          role:        user.role,
+          firstName:   user.firstName ?? '',
           hasPassword: true,
         }
       },
     }),
   ],
+
   callbacks: {
+    // ── signIn ─────────────────────────────────────────────────────────────
     async signIn({ user, account }) {
-      if (account?.provider === 'google') {
-        // Require email from Google profile
-        if (!user.email) return false
+      if (account?.provider !== 'google') return true
 
-        try {
-          // Look up by email — safe even when the DB row doesn't exist yet
-          // (new users: adapter creates the row after signIn returns true)
-          const dbUser = await prisma.user.findUnique({ where: { email: user.email } })
+      // Google must always provide an email — hard gate
+      const email = user.email?.toLowerCase().trim()
+      if (!email) return false
 
-          if (dbUser?.suspended) return false
+      try {
+        // All DB lookups use email — never user.id (which is the Google profile
+        // ID before the adapter writes the row, not a valid DB UUID)
+        const dbUser = await prisma.user.findUnique({ where: { email } })
 
-          // Auto-verify for existing email/password accounts linking Google.
-          // New Google-only users get emailVerified set by the adapter on creation.
-          if (dbUser && !dbUser.emailVerified) {
-            await prisma.user.update({
-              where: { email: user.email },
-              data: { emailVerified: new Date() },
-            })
-          }
-        } catch (err) {
-          console.error('[signIn] Google callback DB error:', err)
-          return false
+        // Block suspended users before anything else
+        if (dbUser?.suspended) return false
+
+        // Auto-verify email for existing email/password accounts now linking Google.
+        // Brand-new Google-only accounts: the adapter sets emailVerified on creation.
+        if (dbUser && !dbUser.emailVerified) {
+          await prisma.user.update({
+            where: { email },
+            data:  { emailVerified: new Date() },
+          })
         }
+      } catch (err) {
+        console.error('[auth] signIn Google error:', err)
+        return false
       }
+
       return true
     },
+
+    // ── jwt ────────────────────────────────────────────────────────────────
     async jwt({ token, user, trigger }) {
-      if (trigger === 'update' && token.id) {
-        const dbUser = await prisma.user.findUnique({ where: { id: token.id as string } })
-        if (dbUser) {
-          token.firstName = dbUser.firstName ?? ''
-          token.role = dbUser.role
+      // Session refresh triggered by client update()
+      if (trigger === 'update') {
+        const id = token.id as string | undefined
+        if (id) {
+          const dbUser = await prisma.user.findUnique({ where: { id } })
+          if (dbUser) {
+            token.firstName = dbUser.firstName ?? ''
+            token.role      = dbUser.role
+          }
         }
         return token
       }
+
+      // First sign-in for this session
       if (user) {
-        token.id = user.id
-        const u = user as { role?: string; firstName?: string; hasPassword?: boolean }
-        if (u.role) {
-          // credentials sign-in: role and firstName already in the user object
-          token.role = u.role
-          token.firstName = u.firstName ?? ''
-          token.hasPassword = u.hasPassword ?? false
-        } else if (user.id) {
-          // OAuth sign-in: fetch from DB by id, fallback to email if row not yet committed
-          let dbUser = await prisma.user.findUnique({ where: { id: user.id } })
-          if (!dbUser && user.email) {
-            dbUser = await prisma.user.findUnique({ where: { email: user.email } })
-          }
-          token.role = dbUser?.role ?? 'cliente'
-          token.firstName = dbUser?.firstName ?? ''
-          token.hasPassword = !!dbUser?.password
+        // Credentials: role + firstName are already on the user object
+        const u = user as {
+          role?: string
+          firstName?: string
+          hasPassword?: boolean
+          email?: string
         }
+
+        if (u.role) {
+          token.id          = user.id
+          token.role        = u.role
+          token.firstName   = u.firstName ?? ''
+          token.hasPassword = u.hasPassword ?? false
+          return token
+        }
+
+        // Google OAuth: use email as the single source of truth — never user.id
+        const email = u.email?.toLowerCase().trim() ?? token.email as string | undefined
+        if (!email) return token
+
+        const dbUser = await prisma.user.findUnique({ where: { email } })
+        token.id          = dbUser?.id ?? user.id   // DB id when available
+        token.role        = dbUser?.role        ?? 'cliente'
+        token.firstName   = dbUser?.firstName   ?? ''
+        token.hasPassword = dbUser?.password    ? true : false
       }
+
       return token
     },
+
+    // ── session ────────────────────────────────────────────────────────────
     session({ session, token }) {
       if (session.user) {
-        (session.user as { role: string }).role = token.role as string;
-        (session.user as { id: string }).id = token.id as string;
-        (session.user as { firstName: string }).firstName = (token.firstName as string) ?? '';
-        (session.user as { hasPassword: boolean }).hasPassword = (token.hasPassword as boolean) ?? false;
+        const u = session.user as {
+          role: string
+          id: string
+          firstName: string
+          hasPassword: boolean
+        }
+        u.role        = (token.role        as string)  ?? 'cliente'
+        u.id          = (token.id          as string)  ?? ''
+        u.firstName   = (token.firstName   as string)  ?? ''
+        u.hasPassword = (token.hasPassword as boolean) ?? false
       }
       return session
     },
