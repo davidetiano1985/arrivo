@@ -167,7 +167,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     // ── jwt ────────────────────────────────────────────────────────────────
-    async jwt({ token, user, account, trigger, profile }) {
+    async jwt({ token, user, trigger }) {
       // Session refresh triggered by client update()
       if (trigger === 'update') {
         const id = token.id as string | undefined
