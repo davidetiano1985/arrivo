@@ -1,0 +1,2 @@
+arrivo_user = utente che l’app userà per parlare con PostgreSQL (database reale).
+Joker.2026 = password per quell’utente database, non è la tua password admin del sito.

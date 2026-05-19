@@ -46,24 +46,29 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email.toLowerCase().trim() },
         })
 
-        if (!user || !user.password || user.suspended || !user.emailVerified) {
-          // Track failed attempt if user exists
+        // Hard gates that are NOT password-related — log attempt but do NOT
+        // increment loginAttempts (counter is for "wrong password" only so that
+        // "reset attempts" is meaningful to the admin).
+        if (!user || !user.password || !user.emailVerified) {
           if (user?.id) {
-            await prisma.$transaction([
-              prisma.loginEvent.create({
-                data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
-              }),
-              prisma.user.update({
-                where: { id: user.id },
-                data:  { loginAttempts: { increment: 1 } },
-              }),
-            ]).catch(() => {}) // never block auth on log failure
+            await prisma.loginEvent.create({
+              data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
+            }).catch(() => {})
           }
+          return null
+        }
+
+        // Suspended: log the attempt for audit but don't touch loginAttempts.
+        if (user.suspended) {
+          await prisma.loginEvent.create({
+            data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
+          }).catch(() => {})
           return null
         }
 
         const valid = await bcrypt.compare(credentials.password, user.password)
         if (!valid) {
+          // Wrong password — increment the loginAttempts counter
           await prisma.$transaction([
             prisma.loginEvent.create({
               data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
@@ -110,7 +115,8 @@ export const authOptions: NextAuthOptions = {
 
       try {
         // All DB lookups use email — never user.id (which is the Google profile
-        // ID before the adapter writes the row, not a valid DB UUID)
+        // ID before the adapter writes the row, not a valid DB UUID).
+        // Single query reused for both auth logic and LoginEvent to avoid N+1.
         const dbUser = await prisma.user.findUnique({ where: { email } })
 
         // Block suspended users before anything else
@@ -124,21 +130,16 @@ export const authOptions: NextAuthOptions = {
             data:  { emailVerified: new Date() },
           })
         }
+
+        // Log successful Google login (reuse dbUser — no second query needed)
+        if (dbUser) {
+          await prisma.loginEvent.create({
+            data: { userId: dbUser.id, success: true, provider: 'google' },
+          }).catch(() => {}) // never block sign-in on log failure
+        }
       } catch (err) {
         console.error('[auth] signIn Google error:', err)
         return false
-      }
-
-      // Log successful Google login
-      try {
-        const dbUserFinal = await prisma.user.findUnique({ where: { email } })
-        if (dbUserFinal) {
-          await prisma.loginEvent.create({
-            data: { userId: dbUserFinal.id, success: true, provider: 'google' },
-          })
-        }
-      } catch {
-        // never block sign-in on log failure
       }
 
       return true

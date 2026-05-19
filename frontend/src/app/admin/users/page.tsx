@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
 
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import UsersFilters from './UsersFilters'
 
@@ -42,6 +45,12 @@ export default async function AdminUsersPage({
     order?: string
   }
 }) {
+  // Belt-and-suspenders auth check — layout already guards, this prevents
+  // any future accidental exposure if the layout guard is ever refactored
+  const session = await getServerSession(authOptions)
+  const sessionRole = (session?.user as { role?: string })?.role
+  if (!session || sessionRole !== 'super_admin') redirect('/login')
+
   const page    = Math.max(1, parseInt(searchParams.page    ?? '1',  10))
   const perPage = parseInt(searchParams.perPage ?? '25', 10)   // 0 = all
   const search  = searchParams.search?.trim() ?? ''

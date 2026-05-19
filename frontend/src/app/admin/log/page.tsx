@@ -1,4 +1,8 @@
 import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -23,6 +27,9 @@ export default async function AdminLogPage({
 }: {
   searchParams: { page?: string; action?: string }
 }) {
+  const session = await getServerSession(authOptions)
+  if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
+
   const page        = Math.max(1, parseInt(searchParams.page   ?? '1',  10))
   const perPage     = 50
   const actionFilter = searchParams.action ?? ''

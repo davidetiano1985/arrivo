@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { useCallback, useTransition } from 'react'
+import { useCallback, useTransition, useState, useEffect } from 'react'
 import Link from 'next/link'
 
 const RUOLI = ['', 'super_admin', 'gestore_locale', 'manager', 'staff', 'cliente'] as const
@@ -37,6 +37,10 @@ export default function UsersFilters({
   const status  = params.get('status')  ?? ''
   const perPage = Number(params.get('perPage') ?? 25)
 
+  // Controlled search input — syncs with URL so "clear filters" empties the box
+  const [searchInput, setSearchInput] = useState(search)
+  useEffect(() => { setSearchInput(search) }, [search])
+
   const hasFilters = search || role || status
 
   return (
@@ -49,11 +53,12 @@ export default function UsersFilters({
           </svg>
           <input
             className="h-10 w-full rounded-xl border border-black/10 bg-white pl-9 pr-4 text-sm font-bold text-black placeholder:text-black/35 outline-none focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20"
-            defaultValue={search}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') update({ search: (e.target as HTMLInputElement).value })
+              if (e.key === 'Enter') update({ search: searchInput })
             }}
-            onBlur={(e) => update({ search: e.target.value })}
+            onBlur={() => { if (searchInput !== search) update({ search: searchInput }) }}
             placeholder="Cerca nome, email, #ID…"
             type="search"
           />

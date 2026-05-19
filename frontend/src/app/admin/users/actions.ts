@@ -195,6 +195,11 @@ export async function creaUtente(
     const role      = (formData.get('role')      as string | null) ?? 'cliente'
 
     if (!firstName || !lastName || !email) return { error: 'Nome, cognome ed email sono obbligatori' }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) return { error: 'Formato email non valido' }
+
     if (!RUOLI_VALIDI.includes(role as RuoloValido)) return { error: 'Ruolo non valido' }
 
     const esistente = await prisma.user.findUnique({ where: { email } })
@@ -218,7 +223,14 @@ export async function creaUtente(
       },
     })
 
-    await sendAccountCreatedByAdminEmail(email, token, firstName)
+    // If email fails, delete the orphan record so the admin can retry cleanly
+    try {
+      await sendAccountCreatedByAdminEmail(email, token, firstName)
+    } catch (emailErr) {
+      console.error('[creaUtente] Email send failed, rolling back user creation:', emailErr)
+      await prisma.user.delete({ where: { id: nuovoUtente.id } }).catch(() => {})
+      return { error: 'Account creato ma email di attivazione non inviata. Verifica le credenziali SMTP e riprova.' }
+    }
 
     await logAdminAction({
       adminId:    admin.id,

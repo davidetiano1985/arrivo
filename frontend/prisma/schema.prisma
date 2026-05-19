@@ -93,6 +93,10 @@ model User {
   adminLogsAsTarget AdminLog[]  @relation("targetUser")
   adminLogsAsAdmin  AdminLog[]  @relation("adminUser")
   loginEvents       LoginEvent[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([role])
+  @@index([suspended])
 }
 
 // ─── Audit log admin (immutabile) ────────────────────────────────────────────
