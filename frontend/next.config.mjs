@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep pg and Prisma server-side only — prevents accidental client bundle inclusion [build fix]
+  serverExternalPackages: ['pg', '@prisma/client', '@prisma/adapter-pg'],
+
   async headers() {
     // CSP: blocks external script injection while allowing Next.js inline hydration.
     // 'unsafe-inline' is required for Next.js — nonce-based CSP would need extra setup.

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 
 import { risolviAlert, creaAlert } from './actions'
-import { SEV_MAP, TYPE_MAP } from './page'
+import { SEV_MAP, TYPE_MAP } from './constants'
 
 type StoredAlert = {
   id:          string
