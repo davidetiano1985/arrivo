@@ -9,8 +9,11 @@ import LogoutButton from "./LogoutButton";
 type AdminLink = { href: string; label: string; onlySuperAdmin?: boolean };
 
 const adminLinks: AdminLink[] = [
-  { href: "/admin", label: "Pannello" },
-  { href: "/admin/users", label: "Utenti", onlySuperAdmin: true },
+  { href: "/admin",              label: "Pannello"       },
+  { href: "/admin/users",        label: "Utenti",        onlySuperAdmin: true },
+  { href: "/admin/users/create", label: "+ Crea utente", onlySuperAdmin: true },
+  { href: "/admin/richieste",    label: "Richieste"                           },
+  { href: "/admin/log",          label: "Log admin",     onlySuperAdmin: true },
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

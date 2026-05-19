@@ -35,17 +35,57 @@ export const authOptions: NextAuthOptions = {
         email:    { label: 'Email',    type: 'email'    },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null
+
+        const ip = (req?.headers?.['x-real-ip'] as string | undefined)
+          ?? (req?.headers?.['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim()
+          ?? '127.0.0.1'
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
         })
 
-        if (!user || !user.password || user.suspended || !user.emailVerified) return null
+        if (!user || !user.password || user.suspended || !user.emailVerified) {
+          // Track failed attempt if user exists
+          if (user?.id) {
+            await prisma.$transaction([
+              prisma.loginEvent.create({
+                data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
+              }),
+              prisma.user.update({
+                where: { id: user.id },
+                data:  { loginAttempts: { increment: 1 } },
+              }),
+            ]).catch(() => {}) // never block auth on log failure
+          }
+          return null
+        }
 
         const valid = await bcrypt.compare(credentials.password, user.password)
-        if (!valid) return null
+        if (!valid) {
+          await prisma.$transaction([
+            prisma.loginEvent.create({
+              data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
+            }),
+            prisma.user.update({
+              where: { id: user.id },
+              data:  { loginAttempts: { increment: 1 } },
+            }),
+          ]).catch(() => {})
+          return null
+        }
+
+        // Success — reset attempts counter, log event
+        await prisma.$transaction([
+          prisma.loginEvent.create({
+            data: { userId: user.id, success: true, ipAddress: ip, provider: 'credentials' },
+          }),
+          prisma.user.update({
+            where: { id: user.id },
+            data:  { loginAttempts: 0 },
+          }),
+        ]).catch(() => {})
 
         return {
           id:          user.id,
@@ -87,6 +127,18 @@ export const authOptions: NextAuthOptions = {
       } catch (err) {
         console.error('[auth] signIn Google error:', err)
         return false
+      }
+
+      // Log successful Google login
+      try {
+        const dbUserFinal = await prisma.user.findUnique({ where: { email } })
+        if (dbUserFinal) {
+          await prisma.loginEvent.create({
+            data: { userId: dbUserFinal.id, success: true, provider: 'google' },
+          })
+        }
+      } catch {
+        // never block sign-in on log failure
       }
 
       return true

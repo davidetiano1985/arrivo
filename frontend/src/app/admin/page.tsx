@@ -58,7 +58,7 @@ export default async function AdminPage() {
         <div className="mt-6">
           <h2 className="text-2xl font-black">Sezioni admin</h2>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link
               className="group block rounded-2xl border border-white/10 bg-white/[0.06] p-5 text-white shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:border-[#ff6b00]/70 hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-[#ff6b00] focus:ring-offset-2 focus:ring-offset-black"
               href="/admin/users"
@@ -103,6 +103,28 @@ export default async function AdminPage() {
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <span className="break-all text-xs font-black uppercase text-white/45">/admin/richieste</span>
+                  <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
+                    Apri
+                  </span>
+                </div>
+              </div>
+            </Link>
+            <Link
+              className="group block rounded-2xl border border-white/10 bg-white/[0.06] p-5 text-white shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:border-[#ff6b00]/70 hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-[#ff6b00] focus:ring-offset-2 focus:ring-offset-black"
+              href="/admin/log"
+            >
+              <div className="flex h-full flex-col justify-between gap-5">
+                <div>
+                  <p className="text-xs font-black uppercase text-[#ff6b00]">
+                    Sicurezza
+                  </p>
+                  <h3 className="mt-2 text-xl font-black">Log admin</h3>
+                  <p className="mt-2 text-sm font-bold leading-6 text-white/70">
+                    Audit trail immutabile di tutte le azioni super admin
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="break-all text-xs font-black uppercase text-white/45">/admin/log</span>
                   <span className="rounded-full bg-[#ff6b00] px-4 py-2 text-xs font-black text-black transition group-hover:bg-white">
                     Apri
                   </span>

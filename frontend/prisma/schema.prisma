@@ -69,22 +69,64 @@ model VerificationToken {
 // ─── Utenti ──────────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  firstName     String?
-  lastName      String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String? // null per utenti Google OAuth
-  role          UserRole  @default(cliente)
-  suspended     Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  numericId            Int       @default(autoincrement()) @unique
+  name                 String?
+  firstName            String?
+  lastName             String?
+  email                String    @unique
+  emailVerified        DateTime?
+  image                String?
+  password             String?   // null per utenti Google OAuth
+  phone                String?
+  role                 UserRole  @default(cliente)
+  suspended            Boolean   @default(false)
+  loginAttempts        Int       @default(0)
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  accounts    Account[]
-  sessions    Session[]
-  restaurants Restaurant[] // ristoranti di cui è owner
+  accounts          Account[]
+  sessions          Session[]
+  restaurants       Restaurant[]        // ristoranti di cui è owner
+  adminLogsAsTarget AdminLog[]  @relation("targetUser")
+  adminLogsAsAdmin  AdminLog[]  @relation("adminUser")
+  loginEvents       LoginEvent[]
+}
+
+// ─── Audit log admin (immutabile) ────────────────────────────────────────────
+
+model AdminLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  adminId     String?
+  adminEmail  String
+  targetId    String?
+  targetEmail String
+  action      String
+  details     String?  @db.Text
+
+  admin  User? @relation("adminUser",  fields: [adminId],  references: [id], onDelete: SetNull)
+  target User? @relation("targetUser", fields: [targetId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([targetId])
+}
+
+// ─── Login events (storico accessi) ─────────────────────────────────────────
+
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+  success   Boolean
+  ipAddress String?
+  provider  String   @default("credentials")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ─── Richieste registrazione locale ──────────────────────────────────────────

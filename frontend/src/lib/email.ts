@@ -149,6 +149,101 @@ export async function sendRichiestaRifiutataEmail(email: string, nomeLocale: str
   })
 }
 
+export async function sendPasswordResetEmail(email: string, token: string, firstName?: string) {
+  const url = `${process.env.NEXTAUTH_URL}/reimposta-password?token=${token}`
+  const greeting = firstName ? `Ciao ${firstName},` : 'Ciao,'
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'Reimposta la tua password — Arrivo',
+    html: `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="utf-8" /><title>Reimposta password</title></head>
+<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#000000;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#111111;border-radius:24px;overflow:hidden;">
+        <tr><td style="background:#000000;padding:32px 40px 24px;text-align:center;border-bottom:1px solid #1a1a1a;">
+          <img src="https://arrivoapp.it/arrivo_logo.svg" alt="Arrivo" width="110" style="display:block;margin:0 auto;" />
+        </td></tr>
+        <tr><td style="padding:40px 40px 32px;">
+          <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ff6b00;">Reset password</p>
+          <h1 style="margin:0 0 16px;font-size:24px;font-weight:900;color:#ffffff;line-height:1.3;">${greeting}</h1>
+          <p style="margin:0 0 32px;font-size:15px;font-weight:600;line-height:1.75;color:rgba(255,255,255,0.60);">
+            Hai richiesto il reset della tua password. Clicca il pulsante qui sotto per impostarne una nuova.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:0 0 32px;">
+            <a href="${url}" style="display:inline-block;background:#ff6b00;color:#ffffff;text-decoration:none;font-size:15px;font-weight:900;padding:16px 44px;border-radius:14px;">
+              Reimposta password &rarr;
+            </a>
+          </td></tr></table>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+            <tr><td style="padding:16px 20px;">
+              <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.30);">Il pulsante non funziona?</p>
+              <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.45);word-break:break-all;line-height:1.65;">
+                <a href="${url}" style="color:#ff6b00;text-decoration:none;font-weight:700;">${url}</a>
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.30);line-height:1.65;">Il link scade tra <strong style="color:rgba(255,255,255,0.50);">24 ore</strong>. Se non hai richiesto il reset, ignora questa email.</p>
+          <p style="margin:8px 0 0;font-size:11px;color:rgba(255,255,255,0.18);">Arrivo &middot; arrivoapp.it</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  })
+}
+
+export async function sendAccountCreatedByAdminEmail(
+  email: string,
+  token: string,
+  firstName: string,
+) {
+  const url = `${process.env.NEXTAUTH_URL}/reimposta-password?token=${token}`
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'Il tuo account Arrivo è stato creato',
+    html: `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="utf-8" /><title>Account creato</title></head>
+<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#000000;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#111111;border-radius:24px;overflow:hidden;">
+        <tr><td style="background:#000000;padding:32px 40px 24px;text-align:center;border-bottom:1px solid #1a1a1a;">
+          <img src="https://arrivoapp.it/arrivo_logo.svg" alt="Arrivo" width="110" style="display:block;margin:0 auto;" />
+        </td></tr>
+        <tr><td style="padding:40px 40px 32px;">
+          <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ff6b00;">Benvenuto su Arrivo</p>
+          <h1 style="margin:0 0 16px;font-size:24px;font-weight:900;color:#ffffff;line-height:1.3;">Ciao ${firstName}!</h1>
+          <p style="margin:0 0 32px;font-size:15px;font-weight:600;line-height:1.75;color:rgba(255,255,255,0.60);">
+            Il tuo account Arrivo è stato creato dall'amministratore. Clicca qui sotto per impostare la tua password e attivare l'account.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:0 0 32px;">
+            <a href="${url}" style="display:inline-block;background:#ff6b00;color:#ffffff;text-decoration:none;font-size:15px;font-weight:900;padding:16px 44px;border-radius:14px;">
+              Imposta password &rarr;
+            </a>
+          </td></tr></table>
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.30);">Il link scade tra 24 ore.</p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.18);">Arrivo &middot; arrivoapp.it</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  })
+}
+
 export async function sendVerificationEmail(email: string, token: string, firstName?: string) {
   const url = `${process.env.NEXTAUTH_URL}/api/auth/verify?token=${token}`
   const greeting = firstName ? `Ciao ${firstName}!` : 'Benvenuto su Arrivo!'
