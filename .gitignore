@@ -65,3 +65,7 @@ arrivo-android/.expo/
 
 # CI/CD local
 .env.ci
+
+# Claude Code internal files
+.claude/worktrees/
+.claude/settings.local.json
