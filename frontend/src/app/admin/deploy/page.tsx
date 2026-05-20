@@ -1,3 +1,4 @@
+// deploy page — v2 auto-deploy test 2026-05-20
 import { getServerSession }    from 'next-auth'
 import { redirect }             from 'next/navigation'
 import Link                     from 'next/link'
