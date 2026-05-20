@@ -3,6 +3,7 @@
 API FastAPI per Arrivo.
 
 Lo scaffold include la struttura modulare iniziale, senza endpoint o logiche reali.
+Vedi `app/main.py` per gli endpoint disponibili e `app/api/` per i router.
 
 ## Cartelle principali
 

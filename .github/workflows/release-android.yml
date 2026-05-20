@@ -43,7 +43,8 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
-          cache: 'gradle'
+          # NO cache: 'gradle' — android/ non esiste ancora (lo genera expo prebuild)
+          # Il Gradle cache viene gestito dall'explicit actions/cache step DOPO prebuild
 
       - name: Install npm dependencies
         working-directory: ${{ env.APP_DIR }}
@@ -53,19 +54,50 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: npx tsc --noEmit
 
-      - name: Accept Android SDK licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+      # ── Android SDK ─────────────────────────────────────────────────────────────
+      - name: Setup Android SDK
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" \
+            "build-tools;35.0.0" \
+            "build-tools;36.0.0" \
+            "platforms;android-35" \
+            "platforms;android-36" \
+            "ndk;27.1.12297006" \
+            "platform-tools" 2>&1 | tail -5 || true
+          echo "Available platforms:"
+          ls "$ANDROID_HOME/platforms/" 2>/dev/null || echo "none"
+          echo "Available build-tools:"
+          ls "$ANDROID_HOME/build-tools/" 2>/dev/null || echo "none"
 
+      # ── Expo prebuild ───────────────────────────────────────────────────────────
       - name: Expo prebuild
         working-directory: ${{ env.APP_DIR }}
-        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          EXPO_NO_GIT_STATUS: '1'
+        run: npx expo prebuild --platform android --clean
 
+      # ── Patch compileSdk se android-36 non disponibile ──────────────────────────
+      - name: Patch compileSdk fallback
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          if [ ! -d "$ANDROID_HOME/platforms/android-36" ]; then
+            AVAIL=$(ls "$ANDROID_HOME/platforms/" | grep '^android-' | sort -t- -k2 -n | tail -1 | sed 's/android-//')
+            echo "⚠ android-36 non disponibile — uso android-$AVAIL come compileSdk"
+            echo "" >> gradle.properties
+            echo "# CI fallback — android-36 non disponibile sul runner" >> gradle.properties
+            echo "android.compileSdkVersion=$AVAIL" >> gradle.properties
+          else
+            echo "✅ android-36 disponibile"
+          fi
+
+      # ── Bump version ─────────────────────────────────────────────────────────────
       - name: Bump version in app.json
         working-directory: ${{ env.APP_DIR }}
         run: |
           VERSION="${{ github.event.inputs.version_name }}"
           CODE="${{ github.event.inputs.version_code }}"
-          # Update app.json con jq se disponibile, altrimenti sed
           if command -v jq &>/dev/null; then
             jq ".expo.version = \"$VERSION\" | .expo.android.versionCode = ($CODE | tonumber)" \
               app.json > app.json.tmp && mv app.json.tmp app.json
@@ -74,32 +106,38 @@ jobs:
           fi
           cat app.json | grep -E '"version"|"versionCode"' || true
 
+      # ── local.properties ─────────────────────────────────────────────────────────
       - name: Set Android SDK path
         working-directory: ${{ env.APP_DIR }}/android
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
+      # ── Gradle cache (DOPO prebuild — android/ esiste ora) ───────────────────────
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('arrivo-build/android/**/*.gradle*', 'arrivo-build/android/**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      # ── Firma con keystore ──────────────────────────────────────────────────
+      # ── Firma con keystore ───────────────────────────────────────────────────────
       - name: Decode keystore
+        id: keystore
         run: |
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d \
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d \
               > ${{ env.APP_DIR }}/android/app/release.keystore
-            echo "KEYSTORE_PRESENT=true" >> $GITHUB_ENV
+            echo "present=true" >> $GITHUB_OUTPUT
             echo "✅ Keystore decodificato"
           else
-            echo "KEYSTORE_PRESENT=false" >> $GITHUB_ENV
+            echo "present=false" >> $GITHUB_OUTPUT
             echo "⚠ ANDROID_KEYSTORE_BASE64 non configurato — build non firmata"
           fi
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
+      # ── Build Release APK ────────────────────────────────────────────────────────
       - name: Build Release APK
         working-directory: ${{ env.APP_DIR }}/android
         run: |
@@ -112,7 +150,7 @@ jobs:
             "-PversionName=${{ github.event.inputs.version_name }}"
             "-PversionCode=${{ github.event.inputs.version_code }}"
           )
-          if [ "${{ env.KEYSTORE_PRESENT }}" = "true" ]; then
+          if [ "${{ steps.keystore.outputs.present }}" = "true" ]; then
             GRADLE_ARGS+=(
               "-Pandroid.injected.signing.store.file=$(pwd)/app/release.keystore"
               "-Pandroid.injected.signing.store.password=${{ secrets.ANDROID_STORE_PASSWORD }}"
@@ -120,28 +158,37 @@ jobs:
               "-Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}"
             )
           fi
-          ./gradlew "${GRADLE_ARGS[@]}"
+          ./gradlew "${GRADLE_ARGS[@]}" 2>&1
 
-      - name: Rename APK
+      # ── Trova e rinomina APK ─────────────────────────────────────────────────────
+      - name: Locate and rename APK
+        id: apk
         run: |
           VERSION="${{ github.event.inputs.version_name }}"
-          CODE="${{ github.event.inputs.version_code }}"
-          SIGNED="${{ env.KEYSTORE_PRESENT == 'true' && 'signed' || 'unsigned' }}"
-          APK_SRC="${{ env.APP_DIR }}/android/app/build/outputs/apk/release/app-release.apk"
+          SIGNED="${{ steps.keystore.outputs.present == 'true' && 'signed' || 'unsigned' }}"
+          APK=$(find ${{ env.APP_DIR }}/android/app/build/outputs/apk \
+            -name "*.apk" -not -name "*unsigned*" 2>/dev/null | head -1)
+          if [ -z "$APK" ]; then
+            echo "❌ Nessun APK trovato"
+            find ${{ env.APP_DIR }}/android/app/build/outputs -type f 2>/dev/null | head -20
+            exit 1
+          fi
           APK_DST="ARRIVO-Admin-v${VERSION}-${SIGNED}.apk"
-          cp "$APK_SRC" "$APK_DST"
-          echo "APK_NAME=$APK_DST" >> $GITHUB_ENV
+          cp "$APK" "$APK_DST"
           SIZE=$(du -sh "$APK_DST" | cut -f1)
+          echo "path=$APK_DST" >> $GITHUB_OUTPUT
+          echo "name=$APK_DST" >> $GITHUB_OUTPUT
           echo "✅ APK: $APK_DST ($SIZE)"
 
+      # ── Upload artifact ───────────────────────────────────────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.APK_NAME }}
-          path: ${{ env.APK_NAME }}
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.path }}
           retention-days: 90
 
-      # ── GitHub Release ───────────────────────────────────────────────────────
+      # ── GitHub Release ────────────────────────────────────────────────────────────
       - name: Create GitHub Release
         if: ${{ github.event.inputs.create_release == 'true' }}
         uses: softprops/action-gh-release@v2
@@ -152,7 +199,7 @@ jobs:
             ## 📱 ARRIVO Admin v${{ github.event.inputs.version_name }}
 
             ### Installazione
-            1. Scarica `${{ env.APK_NAME }}`
+            1. Scarica `${{ steps.apk.outputs.name }}`
             2. Sul telefono: Impostazioni → Sicurezza → Origini sconosciute → Abilita
             3. Apri APK → Installa
 
@@ -161,18 +208,18 @@ jobs:
             |-------|--------|
             | Version | `${{ github.event.inputs.version_name }}` |
             | Version Code | `${{ github.event.inputs.version_code }}` |
-            | Firmata | `${{ env.KEYSTORE_PRESENT }}` |
+            | Firmata | `${{ steps.keystore.outputs.present }}` |
             | Commit | `${{ github.sha }}` |
-            | Build | $(date -u '+%Y-%m-%d %H:%M UTC') |
-          files: ${{ env.APK_NAME }}
+          files: ${{ steps.apk.outputs.path }}
           draft: false
           prerelease: false
 
-      # ── Cleanup ──────────────────────────────────────────────────────────────
+      # ── Cleanup ───────────────────────────────────────────────────────────────────
       - name: Cleanup keystore
         if: always()
         run: rm -f ${{ env.APP_DIR }}/android/app/release.keystore 2>/dev/null || true
 
+      # ── Summary ───────────────────────────────────────────────────────────────────
       - name: 📊 Release summary
         if: always()
         run: |
@@ -182,9 +229,9 @@ jobs:
             echo "| Campo | Valore |"
             echo "|-------|--------|"
             echo "| Status | ${{ job.status == 'success' && '✅ SUCCESS' || '❌ FAILED' }} |"
-            echo "| APK | \`${{ env.APK_NAME }}\` |"
+            echo "| APK | \`${{ steps.apk.outputs.name }}\` |"
             echo "| Version | \`${{ github.event.inputs.version_name }}\` (code: ${{ github.event.inputs.version_code }}) |"
-            echo "| Firmata | ${{ env.KEYSTORE_PRESENT == 'true' && '✅ Sì' || '⚠️ No (unsigned)' }} |"
+            echo "| Firmata | ${{ steps.keystore.outputs.present == 'true' && '✅ Sì' || '⚠ No (unsigned)' }} |"
             echo "| Release | ${{ github.event.inputs.create_release == 'true' && '✅ Creata su GitHub' || '⏭ Skippata' }} |"
             echo "| Commit | \`${{ github.sha }}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
