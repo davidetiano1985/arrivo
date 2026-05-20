@@ -46,13 +46,15 @@ DATABASE_URL=placeholder npx prisma generate 2>&1 | grep -E 'Generated|error' ||
 
 # ── 4. Run pending migrations (requires real DATABASE_URL) ────────────────────
 echo "→ Running migrations..."
-set -a
-# shellcheck source=/dev/null
-source "$APP_DIR/.env" 2>/dev/null || true
-set +a
-npx prisma migrate deploy 2>&1 | tail -5 || {
-  echo "  ⚠ Migration step had errors (may be non-fatal if already applied)"
-}
+# Extract DATABASE_URL directly from .env — handles quoted values and CRLF endings
+_DB_URL=$(grep '^DATABASE_URL=' "$APP_DIR/.env" \
+  | sed 's/^DATABASE_URL=//' \
+  | tr -d '"' | tr -d "'" | tr -d '\r' | sed 's/[[:space:]]*$//')
+# Temporarily disable pipefail so a migration warning doesn't abort the deploy
+set +o pipefail
+DATABASE_URL="$_DB_URL" npx prisma migrate deploy 2>&1 | tail -5 || \
+  echo "  ⚠ Migration step returned non-zero (may be non-fatal if already applied)"
+set -o pipefail
 
 # ── 5. Backup current build for rollback ──────────────────────────────────────
 echo "→ Backing up current build..."
