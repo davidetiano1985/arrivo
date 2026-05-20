@@ -221,6 +221,7 @@ export default function AdminSidebar({
           <NavItem href="/admin/log"           label="Log Admin" />
           <NavItem href="/admin/eventi"        label="Eventi Live"   dot="blue" />
           <NavItem href="/admin/system-health" label="Stato Sistema" dot={stats.systemStatus} />
+          <NavItem href="/admin/deploy"        label="Deploy Info" />
 
           <SectionLabel>Config</SectionLabel>
           <NavItem href="/admin/impostazioni" label="Impostazioni" />

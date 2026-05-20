@@ -6,73 +6,62 @@ on:
       - main
     paths:
       - 'frontend/**'
+      - 'scripts/**'
       - '.github/workflows/deploy.yml'
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: false   # never cancel a running deploy
+  cancel-in-progress: false   # never cancel a running deploy — wait for it to finish
 
 jobs:
   deploy:
-    name: Build & deploy
+    name: Deploy to arrivoapp.it
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # ── 2. Copy changed source files to VPS ─────────────────────────────────
+      # ── 1. Write SSH key ──────────────────────────────────────────────────────
       - name: Write SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Sync source to VPS
-        run: |
-          rsync -az --delete \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='.next' \
-            --exclude='.env*' \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            frontend/ \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/root/arrivo/frontend/
-
-      # ── 3. Run deploy script on VPS ──────────────────────────────────────────
-      - name: Run deploy script
+      # ── 2. Run deploy script on VPS ───────────────────────────────────────────
+      - name: Run deploy script on VPS
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "bash /root/deploy.sh"
+            -o ConnectTimeout=30 \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "bash /root/arrivo/scripts/deploy.sh '${{ github.sha }}' '${{ github.actor }}'"
 
-      # ── 4. Health check ──────────────────────────────────────────────────────
-      - name: Health check
+      # ── 3. Final health check from GitHub runner ──────────────────────────────
+      - name: Final health check
         run: |
-          echo "Waiting for app to come back online..."
-          for i in 1 2 3 4 5; do
-            sleep 8
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 15 \
-              https://arrivoapp.it/api/health 2>/dev/null || echo "000")
-            echo "Attempt $i — HTTP $STATUS"
-            if [ "$STATUS" = "200" ]; then
-              echo "✓ Site healthy"
-              exit 0
-            fi
-          done
-          echo "⚠ Health check did not return 200 after 5 attempts"
-          exit 1
+          sleep 3
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            --max-time 15 \
+            https://arrivoapp.it/api/health 2>/dev/null || echo "000")
+          echo "Health check: HTTP $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "⚠ Health check failed after deploy (HTTP $STATUS)"
+            exit 1
+          fi
+          echo "✓ Site healthy"
 
-      # ── 5. Notify result ─────────────────────────────────────────────────────
+      # ── 4. Summary ────────────────────────────────────────────────────────────
       - name: Deploy summary
         if: always()
         run: |
-          echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Author**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Time**: $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Deploy Summary"
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Author | ${{ github.actor }} |"
+            echo "| Branch | ${{ github.ref_name }} |"
+            echo "| Status | ${{ job.status }} |"
+            echo "| Time   | $(date -u '+%Y-%m-%d %H:%M UTC') |"
+          } >> "$GITHUB_STEP_SUMMARY"
