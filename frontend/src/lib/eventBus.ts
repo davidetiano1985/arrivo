@@ -10,6 +10,7 @@
  *   emitEvent({ type: 'login_fail', category: 'security', userEmail, ipAddress })
  */
 
+import { Prisma }             from '@prisma/client'
 import { prisma }             from './prisma'
 import { broadcastLiveEvent } from './eventEmitter'
 import type { LiveEvent }     from './eventEmitter'
@@ -93,7 +94,7 @@ export function emitEvent(payload: EmitPayload): void {
       userEmail: payload.userEmail,
       ipAddress: payload.ipAddress,
       route:     payload.route,
-      data:      payload.data ?? {},
+      data:      (payload.data ?? {}) as unknown as Prisma.InputJsonValue,
     },
   }).catch(() => { /* intentionally silent */ })
 }
