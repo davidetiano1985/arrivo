@@ -46,3 +46,22 @@ client_secret*.json
 Thumbs.db
 .idea/
 .vscode/
+
+# Android keystore — MAI su git!
+*.keystore
+*.jks
+arrivo-release.keystore
+release.keystore
+
+# Android build output
+arrivo-build/android/
+arrivo-android/android/
+*.apk
+*.aab
+
+# Expo
+arrivo-build/.expo/
+arrivo-android/.expo/
+
+# CI/CD local
+.env.ci

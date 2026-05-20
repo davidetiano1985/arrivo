@@ -1,0 +1,193 @@
+name: 🤖 Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'arrivo-build/**'
+      - '.github/workflows/build-android.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'arrivo-build/**'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+        options: [debug, release]
+
+concurrency:
+  group: build-android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+  APP_DIR: arrivo-build
+  APK_DEBUG_PATH: arrivo-build/android/app/build/outputs/apk/debug/app-debug.apk
+  APK_RELEASE_PATH: arrivo-build/android/app/build/outputs/apk/release/app-release.apk
+
+jobs:
+  build:
+    name: 📦 Build APK (${{ github.event.inputs.build_type || 'debug' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # ── Setup ────────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
+
+      # ── Node dependencies ─────────────────────────────────────────────────────
+      - name: Install npm dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci --legacy-peer-deps
+
+      # ── TypeScript check ──────────────────────────────────────────────────────
+      - name: TypeScript check
+        working-directory: ${{ env.APP_DIR }}
+        run: npx tsc --noEmit
+
+      # ── Android SDK setup ─────────────────────────────────────────────────────
+      - name: Accept Android SDK licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "build-tools;36.0.0" \
+            "platforms;android-36" \
+            "platform-tools" 2>/dev/null || true
+
+      # ── Expo prebuild ──────────────────────────────────────────────────────────
+      - name: Expo prebuild (genera cartella android)
+        working-directory: ${{ env.APP_DIR }}
+        run: npx expo prebuild --platform android --clean --no-install
+
+      # ── Cache Gradle ──────────────────────────────────────────────────────────
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # ── local.properties ─────────────────────────────────────────────────────
+      - name: Set Android SDK path
+        working-directory: ${{ env.APP_DIR }}/android
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      # ── DEBUG BUILD ──────────────────────────────────────────────────────────
+      - name: Build DEBUG APK
+        if: ${{ github.event.inputs.build_type != 'release' }}
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug \
+            --no-daemon \
+            --build-cache \
+            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=512m"
+
+      # ── RELEASE BUILD ────────────────────────────────────────────────────────
+      - name: Decode release keystore
+        if: ${{ github.event.inputs.build_type == 'release' && secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        working-directory: ${{ env.APP_DIR }}/android/app
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          echo "Keystore decoded: $(wc -c < release.keystore) bytes"
+
+      - name: Build RELEASE APK (signed)
+        if: ${{ github.event.inputs.build_type == 'release' && secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --build-cache \
+            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=512m" \
+            -Pandroid.injected.signing.store.file="$(pwd)/app/release.keystore" \
+            -Pandroid.injected.signing.store.password="${{ secrets.ANDROID_STORE_PASSWORD }}" \
+            -Pandroid.injected.signing.key.alias="${{ secrets.ANDROID_KEY_ALIAS }}" \
+            -Pandroid.injected.signing.key.password="${{ secrets.ANDROID_KEY_PASSWORD }}"
+
+      - name: Build RELEASE APK (unsigned — no keystore configured)
+        if: ${{ github.event.inputs.build_type == 'release' && secrets.ANDROID_KEYSTORE_BASE64 == '' }}
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --build-cache \
+            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=512m"
+
+      # ── APK info ─────────────────────────────────────────────────────────────
+      - name: APK info
+        run: |
+          BUILD_TYPE="${{ github.event.inputs.build_type || 'debug' }}"
+          if [ "$BUILD_TYPE" = "release" ]; then
+            APK_PATH="${{ env.APK_RELEASE_PATH }}"
+          else
+            APK_PATH="${{ env.APK_DEBUG_PATH }}"
+          fi
+          if [ -f "$APK_PATH" ]; then
+            SIZE=$(du -sh "$APK_PATH" | cut -f1)
+            echo "✅ APK trovato: $APK_PATH ($SIZE)"
+            echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+          else
+            echo "❌ APK non trovato in $APK_PATH"
+            find arrivo-build/android/app/build/outputs -name "*.apk" 2>/dev/null || echo "Nessun APK"
+            exit 1
+          fi
+
+      # ── Upload artifact ──────────────────────────────────────────────────────
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARRIVO-Admin-${{ github.event.inputs.build_type || 'debug' }}-${{ github.sha }}
+          path: ${{ env.APK_PATH }}
+          retention-days: 30
+          if-no-files-found: error
+
+      # ── Summary ──────────────────────────────────────────────────────────────
+      - name: 📊 Build summary
+        if: always()
+        run: |
+          BUILD_TYPE="${{ github.event.inputs.build_type || 'debug' }}"
+          {
+            echo "## 🤖 Android Build Summary"
+            echo ""
+            echo "| Campo | Valore |"
+            echo "|-------|--------|"
+            echo "| Status | ${{ job.status == 'success' && '✅ SUCCESS' || '❌ FAILED' }} |"
+            echo "| Build type | \`$BUILD_TYPE\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Autore | ${{ github.actor }} |"
+            echo "| Ora | $(date -u '+%Y-%m-%d %H:%M UTC') |"
+            if [ "${{ job.status }}" = "success" ]; then
+              echo ""
+              echo "> **APK disponibile negli Artifacts** di questa run."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Cleanup keystore (sicurezza) ─────────────────────────────────────────
+      - name: Cleanup keystore
+        if: always()
+        run: rm -f "${{ env.APP_DIR }}/android/app/release.keystore" 2>/dev/null || true

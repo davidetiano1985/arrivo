@@ -1,0 +1,59 @@
+name: 🐍 Deploy Backend FastAPI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'scripts/deploy-backend.sh'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production-backend
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: 🧪 Test prima del deploy
+    uses: ./.github/workflows/test-backend.yml
+
+  deploy:
+    name: 🚀 Deploy Backend VPS
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://arrivoapp.it/api/v1/
+
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Run backend deploy on VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=15 \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "bash /root/arrivo/scripts/deploy-backend.sh '${{ github.sha }}' '${{ github.actor }}'"
+
+      - name: 📊 Deploy summary
+        if: always()
+        run: |
+          {
+            echo "## 🐍 Backend Deploy Summary"
+            echo ""
+            echo "| Campo | Valore |"
+            echo "|-------|--------|"
+            echo "| Status | ${{ job.status == 'success' && '✅ SUCCESS' || '❌ FAILED' }} |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Autore | ${{ github.actor }} |"
+            echo "| Ora | $(date -u '+%Y-%m-%d %H:%M UTC') |"
+          } >> "$GITHUB_STEP_SUMMARY"

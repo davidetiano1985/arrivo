@@ -36,11 +36,11 @@ COMMIT_MSG=$(git log -1 --pretty=format:"%s")
 echo "  Commit: $COMMIT_SHORT — $COMMIT_MSG"
 
 # ── 2. Install dependencies ────────────────────────────────────────────────────
-# Note: must install ALL deps (including devDeps) because tailwindcss/postcss/
-# autoprefixer are devDependencies but required by next build.
+# Note: --include=dev ensures tailwindcss/postcss/autoprefixer are present even
+# if a previous install used --omit=dev. These devDeps are required by next build.
 echo "→ Installing dependencies..."
 cd "$APP_DIR"
-npm install 2>&1 | grep -E 'added|removed|changed|audit' || true
+npm install --include=dev 2>&1 | grep -E 'added|removed|changed|audit' || true
 
 # ── 3. Regenerate Prisma client (type-safe, no DB needed) ─────────────────────
 echo "→ Generating Prisma client..."

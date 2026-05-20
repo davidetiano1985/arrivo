@@ -1,0 +1,190 @@
+name: 📱 Release Android APK (Manuale)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Versione (es. 1.2.0)'
+        required: true
+        default: '1.0.0'
+      version_code:
+        description: 'Version code Android (intero, incrementale)'
+        required: true
+        default: '1'
+      create_release:
+        description: 'Crea GitHub Release con APK allegato?'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+  APP_DIR: arrivo-build
+
+jobs:
+  build-release:
+    name: 📦 Build & Sign Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write   # necessario per creare GitHub Release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
+
+      - name: Install npm dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci --legacy-peer-deps
+
+      - name: TypeScript check
+        working-directory: ${{ env.APP_DIR }}
+        run: npx tsc --noEmit
+
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+
+      - name: Expo prebuild
+        working-directory: ${{ env.APP_DIR }}
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Bump version in app.json
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          VERSION="${{ github.event.inputs.version_name }}"
+          CODE="${{ github.event.inputs.version_code }}"
+          # Update app.json con jq se disponibile, altrimenti sed
+          if command -v jq &>/dev/null; then
+            jq ".expo.version = \"$VERSION\" | .expo.android.versionCode = ($CODE | tonumber)" \
+              app.json > app.json.tmp && mv app.json.tmp app.json
+          else
+            sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" app.json
+          fi
+          cat app.json | grep -E '"version"|"versionCode"' || true
+
+      - name: Set Android SDK path
+        working-directory: ${{ env.APP_DIR }}/android
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # ── Firma con keystore ──────────────────────────────────────────────────
+      - name: Decode keystore
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d \
+              > ${{ env.APP_DIR }}/android/app/release.keystore
+            echo "KEYSTORE_PRESENT=true" >> $GITHUB_ENV
+            echo "✅ Keystore decodificato"
+          else
+            echo "KEYSTORE_PRESENT=false" >> $GITHUB_ENV
+            echo "⚠ ANDROID_KEYSTORE_BASE64 non configurato — build non firmata"
+          fi
+
+      - name: Build Release APK
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          chmod +x gradlew
+          GRADLE_ARGS=(
+            assembleRelease
+            --no-daemon
+            --build-cache
+            "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
+            "-PversionName=${{ github.event.inputs.version_name }}"
+            "-PversionCode=${{ github.event.inputs.version_code }}"
+          )
+          if [ "${{ env.KEYSTORE_PRESENT }}" = "true" ]; then
+            GRADLE_ARGS+=(
+              "-Pandroid.injected.signing.store.file=$(pwd)/app/release.keystore"
+              "-Pandroid.injected.signing.store.password=${{ secrets.ANDROID_STORE_PASSWORD }}"
+              "-Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }}"
+              "-Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}"
+            )
+          fi
+          ./gradlew "${GRADLE_ARGS[@]}"
+
+      - name: Rename APK
+        run: |
+          VERSION="${{ github.event.inputs.version_name }}"
+          CODE="${{ github.event.inputs.version_code }}"
+          SIGNED="${{ env.KEYSTORE_PRESENT == 'true' && 'signed' || 'unsigned' }}"
+          APK_SRC="${{ env.APP_DIR }}/android/app/build/outputs/apk/release/app-release.apk"
+          APK_DST="ARRIVO-Admin-v${VERSION}-${SIGNED}.apk"
+          cp "$APK_SRC" "$APK_DST"
+          echo "APK_NAME=$APK_DST" >> $GITHUB_ENV
+          SIZE=$(du -sh "$APK_DST" | cut -f1)
+          echo "✅ APK: $APK_DST ($SIZE)"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_NAME }}
+          retention-days: 90
+
+      # ── GitHub Release ───────────────────────────────────────────────────────
+      - name: Create GitHub Release
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version_name }}
+          name: ARRIVO Admin v${{ github.event.inputs.version_name }}
+          body: |
+            ## 📱 ARRIVO Admin v${{ github.event.inputs.version_name }}
+
+            ### Installazione
+            1. Scarica `${{ env.APK_NAME }}`
+            2. Sul telefono: Impostazioni → Sicurezza → Origini sconosciute → Abilita
+            3. Apri APK → Installa
+
+            ### Info build
+            | Campo | Valore |
+            |-------|--------|
+            | Version | `${{ github.event.inputs.version_name }}` |
+            | Version Code | `${{ github.event.inputs.version_code }}` |
+            | Firmata | `${{ env.KEYSTORE_PRESENT }}` |
+            | Commit | `${{ github.sha }}` |
+            | Build | $(date -u '+%Y-%m-%d %H:%M UTC') |
+          files: ${{ env.APK_NAME }}
+          draft: false
+          prerelease: false
+
+      # ── Cleanup ──────────────────────────────────────────────────────────────
+      - name: Cleanup keystore
+        if: always()
+        run: rm -f ${{ env.APP_DIR }}/android/app/release.keystore 2>/dev/null || true
+
+      - name: 📊 Release summary
+        if: always()
+        run: |
+          {
+            echo "## 📱 Android Release Build"
+            echo ""
+            echo "| Campo | Valore |"
+            echo "|-------|--------|"
+            echo "| Status | ${{ job.status == 'success' && '✅ SUCCESS' || '❌ FAILED' }} |"
+            echo "| APK | \`${{ env.APK_NAME }}\` |"
+            echo "| Version | \`${{ github.event.inputs.version_name }}\` (code: ${{ github.event.inputs.version_code }}) |"
+            echo "| Firmata | ${{ env.KEYSTORE_PRESENT == 'true' && '✅ Sì' || '⚠️ No (unsigned)' }} |"
+            echo "| Release | ${{ github.event.inputs.create_release == 'true' && '✅ Creata su GitHub' || '⏭ Skippata' }} |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,165 @@
+name: 🔎 PR Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Frontend checks ─────────────────────────────────────────────────────────
+  frontend:
+    name: 🌐 Frontend (Next.js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+        # Build Next.js NON viene fatto in PR — Prisma richiede DB reale.
+        # Il build reale avviene sul VPS via deploy.sh con .env configurato.
+
+  # ─── Android checks ──────────────────────────────────────────────────────────
+  android:
+    name: 🤖 Android (TypeScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: arrivo-build/package-lock.json
+
+      - name: npm ci
+        working-directory: arrivo-build
+        run: npm ci --legacy-peer-deps
+
+      - name: TypeScript check
+        working-directory: arrivo-build
+        run: npx tsc --noEmit
+
+  # ─── Backend checks ──────────────────────────────────────────────────────────
+  backend:
+    name: 🐍 Backend (FastAPI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install deps
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Import check
+        working-directory: backend
+        run: python -c "from app.main import app; print('✅ FastAPI app import OK')"
+
+      - name: Ruff lint (se disponibile)
+        working-directory: backend
+        run: |
+          pip install ruff 2>/dev/null || true
+          ruff check . --output-format=github 2>/dev/null || echo "Ruff non configurato — skip"
+        continue-on-error: true
+
+  # ─── Security scan ───────────────────────────────────────────────────────────
+  security:
+    name: 🔐 Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for secrets/credentials in diff
+        run: |
+          # Cerca pattern di credentials comuni nel diff della PR
+          FOUND=0
+          PATTERNS=(
+            "password\s*=\s*['\"][^'\"]{4,}"
+            "secret\s*=\s*['\"][^'\"]{4,}"
+            "api_key\s*=\s*['\"][^'\"]{4,}"
+            "private_key"
+            "BEGIN RSA PRIVATE"
+            "BEGIN OPENSSH PRIVATE"
+          )
+          for pat in "${PATTERNS[@]}"; do
+            if git diff --name-only ${{ github.event.pull_request.base.sha }}..HEAD | \
+              xargs grep -rl --include="*.ts" --include="*.js" --include="*.py" \
+              --include="*.env*" -iE "$pat" 2>/dev/null | grep -v ".env.example" | grep -q .; then
+              echo "⚠ Possibile credenziale trovata: $pat"
+              FOUND=1
+            fi
+          done
+          if [ "$FOUND" -eq 1 ]; then
+            echo "❌ ATTENZIONE: Potenziali credenziali nel codice. Verifica prima di mergiare."
+            exit 1
+          fi
+          echo "✅ Nessuna credenziale trovata"
+
+  # ─── PR summary ──────────────────────────────────────────────────────────────
+  summary:
+    name: 📋 PR Summary
+    runs-on: ubuntu-latest
+    needs: [frontend, android, backend, security]
+    if: always()
+    timeout-minutes: 2
+
+    steps:
+      - name: Generate summary
+        run: |
+          FE="${{ needs.frontend.result }}"
+          AND="${{ needs.android.result }}"
+          BE="${{ needs.backend.result }}"
+          SEC="${{ needs.security.result }}"
+          status_icon() {
+            case "$1" in success) echo "✅";; failure) echo "❌";; skipped) echo "⏭️";; *) echo "⚠️";; esac
+          }
+          {
+            echo "## 🔎 PR Quality Gate"
+            echo ""
+            echo "| Check | Stato |"
+            echo "|-------|-------|"
+            echo "| 🌐 Frontend (Next.js) | $(status_icon $FE) $FE |"
+            echo "| 🤖 Android (TypeScript) | $(status_icon $AND) $AND |"
+            echo "| 🐍 Backend (FastAPI) | $(status_icon $BE) $BE |"
+            echo "| 🔐 Security Scan | $(status_icon $SEC) $SEC |"
+            echo ""
+            OVERALL="✅ TUTTI I CHECK PASSATI — pronto per merge"
+            for r in $FE $AND $BE $SEC; do
+              [ "$r" = "failure" ] && OVERALL="❌ CHECK FALLITI — NON mergiare"
+            done
+            echo "**$OVERALL**"
+          } >> "$GITHUB_STEP_SUMMARY"
