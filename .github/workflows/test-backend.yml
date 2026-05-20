@@ -77,15 +77,16 @@ jobs:
       - name: FastAPI startup check
         working-directory: backend
         run: |
-          timeout 30 uvicorn app.main:app --host 0.0.0.0 --port 8001 &
+          # Use python -m uvicorn to guarantee it runs from the correct Python env
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 &
           SERVER_PID=$!
-          # Retry up to 10 times (10s total) — cold CI runners can be slow to start
+          # Retry up to 15 times (15s total) — cold CI runners can be slow to start
           STATUS="000"
-          for i in $(seq 1 10); do
+          for i in $(seq 1 15); do
             sleep 1
             STATUS=$(curl -sf -o /dev/null -w '%{http_code}' \
               http://localhost:8001/api/v1/ 2>/dev/null || echo "000")
-            echo "  Attempt $i/10 — HTTP $STATUS"
+            echo "  Attempt $i/15 — HTTP $STATUS"
             [[ "$STATUS" =~ ^(200|404|422)$ ]] && break
           done
           echo "FastAPI health final: HTTP $STATUS"
