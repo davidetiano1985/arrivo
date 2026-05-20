@@ -98,6 +98,40 @@ export default async function ClientiPage({
           ))}
         </div>
 
+        {/* Search */}
+        <form method="GET" action="/admin/clienti" className="flex items-center gap-2">
+          {status && <input type="hidden" name="status" value={status} />}
+          <div className="relative flex-1 max-w-sm">
+            <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              name="search"
+              defaultValue={search}
+              placeholder="Cerca per nome, email o #ID…"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-2 pl-8 pr-9 text-xs font-bold text-white placeholder:text-white/25 outline-none focus:border-[#ff6b00]/50"
+            />
+            {search && (
+              <a
+                href={`/admin/clienti?${status ? `status=${status}` : ''}`}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
+                aria-label="Cancella ricerca"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              </a>
+            )}
+          </div>
+          <button
+            type="submit"
+            className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/60 transition hover:border-[#ff6b00]/40 hover:text-white"
+          >
+            Cerca
+          </button>
+        </form>
+
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2">
           {[
