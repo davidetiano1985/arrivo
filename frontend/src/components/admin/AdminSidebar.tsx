@@ -212,6 +212,11 @@ export default function AdminSidebar({
               : undefined}
           />
 
+          <SectionLabel>Intelligence</SectionLabel>
+          <NavItem href="/admin/control-plane"  label="Control Plane"  dot={stats.systemStatus} />
+          <NavItem href="/admin/intelligence"   label="Intelligence"   />
+          <NavItem href="/admin/observability"  label="Observability"  />
+
           <SectionLabel>Sistema</SectionLabel>
           <NavItem href="/admin/log"           label="Log Admin" />
           <NavItem href="/admin/eventi"        label="Eventi Live"   dot="blue" />

@@ -4,7 +4,8 @@ import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 
-import { prisma } from './prisma'
+import { prisma }     from './prisma'
+import { emitEvent }  from './eventBus'
 
 // ── How long a JWT stays valid ────────────────────────────────────────────────
 // Previously missing → NextAuth defaulted to 30 days (!)
@@ -61,6 +62,7 @@ export const authOptions: NextAuthOptions = {
             await prisma.loginEvent.create({
               data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
             }).catch(() => {})
+            emitEvent({ type: 'login_fail', category: 'security', userId: user.id, userEmail: user.email, ipAddress: ip })
           }
           return null
         }
@@ -70,12 +72,14 @@ export const authOptions: NextAuthOptions = {
           await prisma.loginEvent.create({
             data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
           }).catch(() => {})
+          emitEvent({ type: 'login_fail', category: 'security', userId: user.id, userEmail: user.email, ipAddress: ip, data: { reason: 'suspended' } })
           return null
         }
 
         const valid = await bcrypt.compare(credentials.password, user.password)
         if (!valid) {
           // Wrong password — increment the loginAttempts counter
+          const newAttempts = (user.loginAttempts ?? 0) + 1
           await prisma.$transaction([
             prisma.loginEvent.create({
               data: { userId: user.id, success: false, ipAddress: ip, provider: 'credentials' },
@@ -85,6 +89,15 @@ export const authOptions: NextAuthOptions = {
               data:  { loginAttempts: { increment: 1 } },
             }),
           ]).catch(() => {})
+          // Emit with attempt count — triggers severity boost for brute-force
+          emitEvent({
+            type:      newAttempts >= 10 ? 'brute_force' : 'login_fail',
+            category:  'security',
+            userId:    user.id,
+            userEmail: user.email,
+            ipAddress: ip,
+            data:      { attempts: newAttempts },
+          })
           return null
         }
 
@@ -98,6 +111,7 @@ export const authOptions: NextAuthOptions = {
             data:  { loginAttempts: 0 },
           }),
         ]).catch(() => {})
+        emitEvent({ type: 'login_success', category: 'user', userId: user.id, userEmail: user.email, ipAddress: ip })
 
         return {
           id:           user.id,
@@ -157,6 +171,7 @@ export const authOptions: NextAuthOptions = {
           await prisma.loginEvent.create({
             data: { userId: dbUser.id, success: true, provider: 'google' },
           }).catch(() => {})
+          emitEvent({ type: 'login_success', category: 'user', userId: dbUser.id, userEmail: dbUser.email, data: { provider: 'google' } })
         }
 
         // [Fix M6] Opportunistic cleanup of expired VerificationTokens.
