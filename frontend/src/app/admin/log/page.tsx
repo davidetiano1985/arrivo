@@ -19,6 +19,9 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   CREATE_ALERT:         { label: 'Crea alert',           color: 'bg-orange-100 text-orange-800'   },
   FORCE_LOGOUT:         { label: 'Forza logout',         color: 'bg-violet-100 text-violet-800'   },
   VIEW_AS_USER:         { label: 'Visualizza come utente', color: 'bg-sky-100 text-sky-800'        },
+  EDIT_USER:            { label: 'Modifica utente',      color: 'bg-indigo-100 text-indigo-800'   },
+  CREATE_LOCALE:        { label: 'Crea locale',          color: 'bg-teal-100 text-teal-800'       },
+  EDIT_LOCALE:          { label: 'Modifica locale',      color: 'bg-cyan-100 text-cyan-800'       },
 }
 
 function fmt(d: Date) {

@@ -15,12 +15,12 @@ function fmt(d: Date) {
 export default async function ClientiPage({
   searchParams,
 }: {
-  searchParams: { page?: string; status?: string; search?: string }
+  searchParams: { cursor?: string; status?: string; search?: string }
 }) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
 
-  const page     = Math.max(1, parseInt(searchParams.page ?? '1', 10))
+  const cursorNumericId = searchParams.cursor ? parseInt(searchParams.cursor, 10) : null
   const perPage  = 25
   const status   = searchParams.status ?? ''
   const search   = searchParams.search?.trim() ?? ''
@@ -43,15 +43,15 @@ export default async function ClientiPage({
     } : {}),
   }
 
-  const [total, active, suspended, clienti] = await Promise.all([
+  const [total, active, suspended, rawClienti] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.count({ where: { role: 'cliente', suspended: false } }),
     prisma.user.count({ where: { role: 'cliente', suspended: true  } }),
     prisma.user.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
-      skip:    (page - 1) * perPage,
-      take:    perPage,
+      orderBy: [{ createdAt: 'desc' }, { numericId: 'desc' }],
+      take:    perPage + 1,
+      ...(cursorNumericId ? { cursor: { numericId: cursorNumericId }, skip: 1 } : {}),
       select: {
         id: true, numericId: true, firstName: true, lastName: true,
         email: true, phone: true, suspended: true, createdAt: true,
@@ -61,11 +61,14 @@ export default async function ClientiPage({
     }),
   ])
 
-  const totalPages = Math.ceil(total / perPage)
+  const hasNextPage = rawClienti.length > perPage
+  const clienti     = hasNextPage ? rawClienti.slice(0, perPage) : rawClienti
+  const nextCursor  = hasNextPage ? clienti[clienti.length - 1].numericId : null
 
-  function pageLink(p: number) {
+  function cursorLink(c: number | null) {
     const sp = new URLSearchParams(searchParams as Record<string, string>)
-    sp.set('page', String(p))
+    sp.delete('cursor')
+    if (c) sp.set('cursor', String(c))
     return `/admin/clienti?${sp.toString()}`
   }
 
@@ -230,13 +233,17 @@ export default async function ClientiPage({
           </div>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Cursor Pagination */}
+        {(cursorNumericId || hasNextPage) && (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs font-bold text-white/30">Pagina {page} di {totalPages} · {total} clienti</p>
+            <p className="text-xs font-bold text-white/30">{total} clienti totali</p>
             <div className="flex gap-1.5">
-              {page > 1 && <Link href={pageLink(page - 1)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">← Prec</Link>}
-              {page < totalPages && <Link href={pageLink(page + 1)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">Succ →</Link>}
+              {cursorNumericId && (
+                <Link href={cursorLink(null)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">← Inizio</Link>
+              )}
+              {hasNextPage && nextCursor && (
+                <Link href={cursorLink(nextCursor)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">Successivi {perPage} →</Link>
+              )}
             </div>
           </div>
         )}

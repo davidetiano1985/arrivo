@@ -12,12 +12,12 @@ function fmt(d: Date) {
 export default async function RistorantiPage({
   searchParams,
 }: {
-  searchParams: { page?: string; status?: string; search?: string }
+  searchParams: { cursor?: string; status?: string; search?: string }
 }) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
 
-  const page     = Math.max(1, parseInt(searchParams.page ?? '1', 10))
+  const cursorId = searchParams.cursor ?? null
   const perPage  = 25
   const status   = searchParams.status ?? ''
   const search   = searchParams.search?.trim() ?? ''
@@ -33,13 +33,13 @@ export default async function RistorantiPage({
     } : {}),
   }
 
-  const [total, restaurants] = await Promise.all([
+  const [total, rawRestaurants] = await Promise.all([
     prisma.restaurant.count({ where }),
     prisma.restaurant.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
-      skip:    (page - 1) * perPage,
-      take:    perPage,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take:    perPage + 1,
+      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
       select: {
         id: true, name: true, slug: true, city: true, tipo: true,
         email: true, phone: true, status: true, createdAt: true,
@@ -48,7 +48,16 @@ export default async function RistorantiPage({
     }),
   ])
 
-  const totalPages = Math.ceil(total / perPage)
+  const hasNextPage  = rawRestaurants.length > perPage
+  const restaurants  = hasNextPage ? rawRestaurants.slice(0, perPage) : rawRestaurants
+  const nextCursor   = hasNextPage ? restaurants[restaurants.length - 1].id : null
+
+  function cursorLink(c: string | null) {
+    const sp = new URLSearchParams(searchParams as Record<string, string>)
+    sp.delete('cursor')
+    if (c) sp.set('cursor', c)
+    return `/admin/ristoranti?${sp.toString()}`
+  }
 
   const statusBadge = (s: string) => ({
     approved: 'bg-emerald-500/20 text-emerald-400',
@@ -57,12 +66,6 @@ export default async function RistorantiPage({
   }[s] ?? 'bg-white/10 text-white/40')
 
   const statusLabel = { approved: 'Approvato', rejected: 'Rifiutato', pending: 'In attesa' }
-
-  function pageLink(p: number) {
-    const sp = new URLSearchParams(searchParams as Record<string, string>)
-    sp.set('page', String(p))
-    return `/admin/ristoranti?${sp.toString()}`
-  }
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8">
@@ -247,16 +250,16 @@ export default async function RistorantiPage({
           </div>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Cursor Pagination */}
+        {(cursorId || hasNextPage) && (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs font-bold text-white/30">Pagina {page} di {totalPages}</p>
+            <p className="text-xs font-bold text-white/30">{total} locali totali</p>
             <div className="flex gap-1.5">
-              {page > 1 && (
-                <Link href={pageLink(page - 1)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">← Prec</Link>
+              {cursorId && (
+                <Link href={cursorLink(null)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">← Inizio</Link>
               )}
-              {page < totalPages && (
-                <Link href={pageLink(page + 1)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">Succ →</Link>
+              {hasNextPage && nextCursor && (
+                <Link href={cursorLink(nextCursor)} className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white">Successivi {perPage} →</Link>
               )}
             </div>
           </div>

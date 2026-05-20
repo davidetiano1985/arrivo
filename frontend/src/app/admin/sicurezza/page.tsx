@@ -16,15 +16,15 @@ function fmt(d: Date) {
 export default async function SicurezzaPage({
   searchParams,
 }: {
-  searchParams: { logUser?: string; logIP?: string; logPage?: string }
+  searchParams: { logUser?: string; logIP?: string; logCursor?: string }
 }) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
 
-  // Log Accessi filters
-  const logUser = searchParams.logUser?.trim() ?? ''
-  const logIP   = searchParams.logIP?.trim()   ?? ''
-  const logPage = Math.max(1, parseInt(searchParams.logPage ?? '1', 10))
+  // Log Accessi filters + cursor pagination
+  const logUser    = searchParams.logUser?.trim() ?? ''
+  const logIP      = searchParams.logIP?.trim()   ?? ''
+  const logCursor  = searchParams.logCursor ?? null   // cuid of last item in previous page
   const logPerPage = 30
 
   const now            = new Date()
@@ -53,12 +53,12 @@ export default async function SicurezzaPage({
     suspendedUsers,
     // Brute-force users detail
     bruteUsers,
-    // Top failure IPs (last 24h)
+    // Top failure IPs (last 24h — groupBy)
     foreignIPEvents,
     redisTopIPs,
-    // Log Accessi (paginated, with filters)
+    // Log Accessi (cursor-paginated, with filters)
     logTotal,
-    loginLog,
+    rawLoginLog,
   ] = await Promise.all([
     prisma.loginEvent.count({ where: { success: false, createdAt: { gte: tenMinutesAgo } } }),
     prisma.loginEvent.count({ where: { success: false, createdAt: { gte: oneHourAgo    } } }),
@@ -92,25 +92,24 @@ export default async function SicurezzaPage({
       orderBy: { loginAttempts: 'desc' },
       take: 10,
     }),
-    // All failed-login IPs in last 24h (for frequency map)
-    prisma.loginEvent.findMany({
-      where: {
-        success:   false,
-        createdAt: { gte: twentyFourHAgo },
-        ipAddress: { not: null },
-      },
-      select: { ipAddress: true },
+    // Top failure IPs last 24h — groupBy avoids full-table scan
+    prisma.loginEvent.groupBy({
+      by:      ['ipAddress'],
+      where:   { success: false, createdAt: { gte: twentyFourHAgo }, ipAddress: { not: null } },
+      _count:  { ipAddress: true },
+      orderBy: { _count: { ipAddress: 'desc' } },
+      take:    10,
     }),
     // Redis IP reputation data
     getTopRiskyIPs(20),
     // Log Accessi count (with filters)
     prisma.loginEvent.count({ where: logWhere }),
-    // Log Accessi records (with filters, paginated)
+    // Log Accessi — cursor pagination (never OFFSET)
     prisma.loginEvent.findMany({
-      where: logWhere,
+      where:   logWhere,
       orderBy: { createdAt: 'desc' },
-      skip:    (logPage - 1) * logPerPage,
-      take:    logPerPage,
+      take:    logPerPage + 1,
+      ...(logCursor ? { cursor: { id: logCursor }, skip: 1 } : {}),
       select: {
         id: true, createdAt: true, success: true, ipAddress: true, provider: true,
         user: { select: { id: true, email: true, firstName: true, lastName: true } },
@@ -118,20 +117,17 @@ export default async function SicurezzaPage({
     }),
   ])
 
-  // Count IP frequencies
-  const ipFreq = new Map<string, number>()
-  for (const ev of foreignIPEvents) {
-    if (ev.ipAddress) {
-      ipFreq.set(ev.ipAddress, (ipFreq.get(ev.ipAddress) ?? 0) + 1)
-    }
-  }
-  const topIPs = Array.from(ipFreq.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
+  // Build top-IPs from groupBy result (already sorted by count desc)
+  const topIPs = foreignIPEvents
+    .filter((r): r is typeof r & { ipAddress: string } => r.ipAddress !== null)
+    .map((r) => [r.ipAddress, r._count.ipAddress] as [string, number])
 
-  const total24h = success24h + failed24h
+  const hasNextLogPage = rawLoginLog.length > logPerPage
+  const loginLog       = hasNextLogPage ? rawLoginLog.slice(0, logPerPage) : rawLoginLog
+  const nextLogCursor  = hasNextLogPage ? loginLog[loginLog.length - 1].id : null
+
+  const total24h    = success24h + failed24h
   const failRate24h = total24h > 0 ? Math.round((failed24h / total24h) * 100) : 0
-  const logTotalPages = Math.ceil(logTotal / logPerPage)
 
   const systemStatus =
     failed10min > 10 || bruteUsers.some((u) => u.loginAttempts >= 20)
@@ -478,27 +474,25 @@ export default async function SicurezzaPage({
                   </tbody>
                 </table>
 
-                {/* Pagination */}
-                {logTotalPages > 1 && (
+                {/* Cursor Pagination */}
+                {(logCursor || hasNextLogPage) && (
                   <div className="flex items-center justify-between border-t border-white/[0.07] px-4 py-3">
-                    <p className="text-xs font-bold text-white/30">
-                      Pagina {logPage} di {logTotalPages} · {logTotal} accessi
-                    </p>
+                    <p className="text-xs font-bold text-white/30">{logTotal} accessi totali{logUser || logIP ? ' (filtrati)' : ''}</p>
                     <div className="flex gap-1.5">
-                      {logPage > 1 && (
+                      {logCursor && (
                         <Link
-                          href={`/admin/sicurezza?${new URLSearchParams({ ...(logUser ? { logUser } : {}), ...(logIP ? { logIP } : {}), logPage: String(logPage - 1) })}`}
+                          href={`/admin/sicurezza?${new URLSearchParams({ ...(logUser ? { logUser } : {}), ...(logIP ? { logIP } : {}) })}`}
                           className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white"
                         >
-                          ← Prec
+                          ← Inizio
                         </Link>
                       )}
-                      {logPage < logTotalPages && (
+                      {hasNextLogPage && nextLogCursor && (
                         <Link
-                          href={`/admin/sicurezza?${new URLSearchParams({ ...(logUser ? { logUser } : {}), ...(logIP ? { logIP } : {}), logPage: String(logPage + 1) })}`}
+                          href={`/admin/sicurezza?${new URLSearchParams({ ...(logUser ? { logUser } : {}), ...(logIP ? { logIP } : {}), logCursor: nextLogCursor })}`}
                           className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white"
                         >
-                          Succ →
+                          Successivi {logPerPage} →
                         </Link>
                       )}
                     </div>
