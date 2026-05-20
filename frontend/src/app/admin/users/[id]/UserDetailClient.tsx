@@ -9,6 +9,7 @@ import {
   resetTentativiLogin,
   eliminaUtente,
   forzaLogout,
+  modificaUtente,
 } from '../actions'
 
 // [Fix M1] super_admin excluded from dropdown. A super_admin can still HAVE
@@ -16,13 +17,18 @@ import {
 const RUOLI = ['gestore_locale', 'manager', 'staff', 'cliente'] as const
 
 type Props = {
-  userId: string
-  isSelf: boolean
-  currentRole: string
-  suspended: boolean
-  hasPassword: boolean
+  userId:        string
+  isSelf:        boolean
+  currentRole:   string
+  suspended:     boolean
+  hasPassword:   boolean
   loginAttempts: number
-  tokenVersion: number
+  tokenVersion:  number
+  // Initial dati for edit form
+  firstName:     string
+  lastName:      string
+  email:         string
+  phone:         string
 }
 
 type ModalConfig = {
@@ -41,6 +47,10 @@ export default function UserDetailClient({
   hasPassword,
   loginAttempts,
   tokenVersion,
+  firstName,
+  lastName,
+  email,
+  phone,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -50,6 +60,14 @@ export default function UserDetailClient({
   const [tv, setTv] = useState(tokenVersion)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [modal, setModal] = useState<ModalConfig>(null)
+
+  // Edit form state
+  const [editOpen, setEditOpen]       = useState(false)
+  const [editFirst, setEditFirst]     = useState(firstName)
+  const [editLast, setEditLast]       = useState(lastName)
+  const [editEmail, setEditEmail]     = useState(email)
+  const [editPhone, setEditPhone]     = useState(phone)
+  const [editConfirm, setEditConfirm] = useState(false)
 
   function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok })
@@ -144,6 +162,24 @@ export default function UserDetailClient({
     })
   }
 
+  // ── Modifica dati ────────────────────────────────────────────────────────────
+  async function handleSalvaModifiche() {
+    const res = await modificaUtente(userId, {
+      firstName: editFirst,
+      lastName:  editLast,
+      email:     editEmail,
+      phone:     editPhone,
+    })
+    setEditConfirm(false)
+    setEditOpen(false)
+    if (res?.error) {
+      showToast(res.error, false)
+    } else {
+      showToast('Dati aggiornati con successo.', true)
+      startTransition(() => router.refresh())
+    }
+  }
+
   // ── Delete user ──────────────────────────────────────────────────────────────
   function handleDelete() {
     confirm({
@@ -200,8 +236,121 @@ export default function UserDetailClient({
         </div>
       )}
 
+      {/* Edit confirm modal */}
+      {editConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-black text-black">Conferma modifiche</h2>
+            <p className="mt-2 text-sm font-bold leading-relaxed text-black/60">
+              Stai per salvare le seguenti modifiche. Confermare?
+            </p>
+            <ul className="mt-3 space-y-1 text-xs font-bold text-black/50">
+              <li><span className="text-black/30">Nome:</span> {editFirst} {editLast}</li>
+              <li><span className="text-black/30">Email:</span> {editEmail}</li>
+              <li><span className="text-black/30">Telefono:</span> {editPhone || '—'}</li>
+            </ul>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                className="rounded-xl border border-black/10 px-4 py-2 text-sm font-black text-black transition hover:bg-black/5"
+                onClick={() => setEditConfirm(false)}
+              >
+                Annulla
+              </button>
+              <button
+                className="rounded-xl bg-[#ff6b00] px-4 py-2 text-sm font-black text-white transition hover:bg-[#e55f00]"
+                onClick={handleSalvaModifiche}
+              >
+                Salva modifiche
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Actions panel */}
       <div className="space-y-4">
+
+        {/* Modifica dati */}
+        <div className="rounded-2xl bg-black/[0.03] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-black uppercase tracking-widest text-black/45">Modifica dati</p>
+            <button
+              className="rounded-xl border border-black/10 bg-white px-3 py-1.5 text-xs font-black text-black transition hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00] disabled:opacity-50"
+              onClick={() => setEditOpen((v) => !v)}
+              disabled={loading}
+            >
+              {editOpen ? '✕ Chiudi' : '✏️ Modifica'}
+            </button>
+          </div>
+
+          {editOpen && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-[10px] font-black uppercase text-black/35">Nome</label>
+                  <input
+                    type="text"
+                    value={editFirst}
+                    onChange={(e) => setEditFirst(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold text-black outline-none focus:border-[#ff6b00]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-black uppercase text-black/35">Cognome</label>
+                  <input
+                    type="text"
+                    value={editLast}
+                    onChange={(e) => setEditLast(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold text-black outline-none focus:border-[#ff6b00]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase text-black/35">Email</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold text-black outline-none focus:border-[#ff6b00]"
+                />
+                {editEmail !== email && (
+                  <p className="mt-1 text-[10px] font-black text-amber-600">⚠ La modifica dell&apos;email invaliderà la verifica esistente.</p>
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase text-black/35">Telefono</label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="Opzionale"
+                  className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold text-black outline-none focus:border-[#ff6b00]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  className="rounded-xl border border-black/10 px-4 py-2 text-sm font-black text-black transition hover:bg-black/5"
+                  onClick={() => {
+                    setEditFirst(firstName)
+                    setEditLast(lastName)
+                    setEditEmail(email)
+                    setEditPhone(phone)
+                    setEditOpen(false)
+                  }}
+                >
+                  Annulla
+                </button>
+                <button
+                  className="rounded-xl bg-[#ff6b00] px-4 py-2 text-sm font-black text-white transition hover:bg-[#e55f00] disabled:opacity-50"
+                  disabled={!editFirst.trim() || !editLast.trim() || !editEmail.trim()}
+                  onClick={() => setEditConfirm(true)}
+                >
+                  Salva modifiche
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Role */}
         <div className="rounded-2xl bg-black/[0.03] p-4">

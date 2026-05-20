@@ -5,16 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type LiveEvent = {
-  id:        string
-  createdAt: string
-  success:   boolean
-  ipAddress: string | null
-  provider:  string
-  userEmail: string | null
-  userName:  string | null
-}
-
 type DashData = {
   totalUsers:           number
   newUsers24h:          number
@@ -28,7 +18,6 @@ type DashData = {
   criticalAlerts:       number
   totalRestaurants:     number
   systemStatus:         'green' | 'yellow' | 'red'
-  recentEvents:         LiveEvent[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,12 +78,6 @@ function MetricCard({
   return inner
 }
 
-function fmt(iso: string) {
-  return new Date(iso).toLocaleTimeString('it-IT', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  })
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function AdminControlRoom({ initialData }: { initialData: DashData }) {
@@ -104,33 +87,14 @@ export default function AdminControlRoom({ initialData }: { initialData: DashDat
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const clockRef  = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Fetch live stats + events every 30 s
+  // Fetch live stats every 30 s
   useEffect(() => {
     async function refresh() {
       try {
-        const [statsRes, eventsRes] = await Promise.all([
-          fetch('/api/admin/stats',  { cache: 'no-store' }),
-          fetch('/api/admin/events?limit=12', { cache: 'no-store' }),
-        ])
-        if (statsRes.ok && eventsRes.ok) {
-          const [stats, evData] = await Promise.all([statsRes.json(), eventsRes.json()])
-          setData((prev) => ({
-            ...prev,
-            ...stats,
-            recentEvents: evData.events.map((e: {
-              id: string; createdAt: string; success: boolean;
-              ipAddress: string | null; provider: string;
-              user?: { email?: string; firstName?: string } | null;
-            }) => ({
-              id:        e.id,
-              createdAt: e.createdAt,
-              success:   e.success,
-              ipAddress: e.ipAddress,
-              provider:  e.provider,
-              userEmail: e.user?.email  ?? null,
-              userName:  e.user?.firstName ?? null,
-            })),
-          }))
+        const res = await fetch('/api/admin/stats', { cache: 'no-store' })
+        if (res.ok) {
+          const stats = await res.json()
+          setData((prev) => ({ ...prev, ...stats }))
           setLastUpdate(new Date())
         }
       } catch { /* keep stale */ }
@@ -225,7 +189,7 @@ export default function AdminControlRoom({ initialData }: { initialData: DashDat
             href="/admin/system-health"
             className="flex items-center justify-between rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4 transition hover:opacity-80"
           >
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/35">System Health</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/35">Stato Sistema</p>
             <span className={`h-3 w-3 rounded-full animate-pulse ${
               data.systemStatus === 'red' ? 'bg-red-500'
               : data.systemStatus === 'yellow' ? 'bg-amber-400'
@@ -271,63 +235,13 @@ export default function AdminControlRoom({ initialData }: { initialData: DashDat
         </div>
       </div>
 
-      {/* ── Recent events feed ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03]">
-        <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400" />
-            <p className="text-xs font-black uppercase tracking-widest text-white/50">
-              Login recenti
-            </p>
-          </div>
-          <Link
-            href="/admin/eventi"
-            className="text-xs font-black text-[#ff6b00] hover:underline"
-          >
-            Tutti →
-          </Link>
-        </div>
-
-        <div className="divide-y divide-white/[0.05]">
-          {data.recentEvents.length === 0 && (
-            <p className="px-5 py-6 text-xs font-bold text-white/25">Nessun evento recente.</p>
-          )}
-          {data.recentEvents.map((ev) => (
-            <div key={ev.id} className="flex items-center gap-3 px-5 py-3">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${ev.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
-              <div className="min-w-0 flex-1">
-                <span className="text-xs font-black text-white/70">
-                  {ev.userName ?? ev.userEmail ?? 'Utente sconosciuto'}
-                </span>
-                {ev.userEmail && ev.userName && (
-                  <span className="ml-2 text-xs font-bold text-white/30">{ev.userEmail}</span>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {ev.ipAddress && (
-                  <span className="font-mono text-[10px] text-white/25">{ev.ipAddress}</span>
-                )}
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                  ev.success
-                    ? 'bg-emerald-500/15 text-emerald-400'
-                    : 'bg-red-500/15 text-red-400'
-                }`}>
-                  {ev.provider}
-                </span>
-                <span className="font-mono text-[10px] text-white/25">{fmt(ev.createdAt)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── Quick nav grid ─────────────────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { href: '/admin/users',         label: 'Utenti',        desc: 'Gestisci tutti i ruoli'      },
           { href: '/admin/sicurezza',      label: 'Sicurezza',     desc: 'Accessi e anomalie'          },
           { href: '/admin/richieste',      label: 'Richieste',     desc: 'Approvazione locali'         },
-          { href: '/admin/system-health',  label: 'System Health', desc: 'DB, memoria, uptime'         },
+          { href: '/admin/system-health',  label: 'Stato Sistema', desc: 'DB, memoria, uptime'         },
         ].map((item) => (
           <Link
             key={item.href}

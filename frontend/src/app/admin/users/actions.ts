@@ -221,6 +221,77 @@ export async function eliminaUtente(userId: string): Promise<{ error?: string }>
   }
 }
 
+// ── Modifica dati utente ─────────────────────────────────────────────────────
+
+export async function modificaUtente(
+  userId: string,
+  data: {
+    firstName: string
+    lastName:  string
+    email:     string
+    phone:     string
+  },
+): Promise<{ error?: string }> {
+  try {
+    const admin = await verificaSuperAdmin()
+
+    const firstName = data.firstName.trim()
+    const lastName  = data.lastName.trim()
+    const email     = data.email.toLowerCase().trim()
+    const phone     = data.phone.trim() || null
+
+    if (!firstName || !lastName) return { error: 'Nome e cognome sono obbligatori' }
+    if (!email) return { error: 'Email obbligatoria' }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) return { error: 'Formato email non valido' }
+
+    const target = await prisma.user.findUnique({ where: { id: userId } })
+    if (!target) return { error: 'Utente non trovato' }
+
+    // If email is changing, check uniqueness
+    if (email !== target.email) {
+      const conflict = await prisma.user.findUnique({ where: { email } })
+      if (conflict) return { error: 'Email già utilizzata da un altro account' }
+    }
+
+    // Build change summary for audit log
+    const changes: string[] = []
+    if (firstName !== (target.firstName ?? '')) changes.push(`nome: "${target.firstName}" → "${firstName}"`)
+    if (lastName  !== (target.lastName  ?? '')) changes.push(`cognome: "${target.lastName}" → "${lastName}"`)
+    if (email     !== target.email)             changes.push(`email: "${target.email}" → "${email}"`)
+    if (phone     !== (target.phone ?? null))   changes.push(`telefono: "${target.phone ?? '—'}" → "${phone ?? '—'}"`)
+
+    if (changes.length === 0) return {}  // nothing changed
+
+    await prisma.user.update({
+      where: { id: userId },
+      data:  {
+        firstName,
+        lastName,
+        name:  `${firstName} ${lastName}`,
+        email,
+        phone,
+      },
+    })
+
+    await logAdminAction({
+      adminId:    admin.id,
+      adminEmail: admin.email,
+      targetId:   userId,
+      targetEmail: email,
+      action:     'EDIT_USER',
+      details:    changes.join(' | '),
+    })
+
+    revalidatePath('/admin/users')
+    revalidatePath(`/admin/users/${userId}`)
+    return {}
+  } catch (err) {
+    return { error: (err as Error).message }
+  }
+}
+
 // ── Crea utente ───────────────────────────────────────────────────────────────
 
 export async function creaUtente(

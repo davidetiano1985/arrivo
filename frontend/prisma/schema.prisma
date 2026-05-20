@@ -227,8 +227,10 @@ model Restaurant {
   description String?          @db.Text
   address     String?
   city        String?
+  zip         String?
   phone       String?
   email       String?
+  hours       String?          @db.Text
   status      RestaurantStatus @default(pending)
   ownerId     String?
   createdAt   DateTime         @default(now())

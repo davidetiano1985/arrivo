@@ -72,12 +72,23 @@ export default async function RistorantiPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-[#ff6b00]">Super Admin</p>
-            <h1 className="mt-1 text-3xl font-black">Ristoranti</h1>
+            <h1 className="mt-1 text-3xl font-black">Locali</h1>
             <p className="mt-1 text-sm font-bold text-white/40">{total} totali</p>
           </div>
-          <Link href="/admin/richieste" className="flex h-9 items-center gap-2 rounded-xl border border-white/10 px-3 text-xs font-black text-white/60 transition hover:border-white/30 hover:text-white">
-            Nuove richieste →
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/ristoranti/create"
+              className="flex h-9 items-center gap-2 rounded-xl bg-[#ff6b00] px-4 text-xs font-black text-black transition hover:bg-[#e55f00]"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Crea locale
+            </Link>
+            <Link href="/admin/richieste" className="flex h-9 items-center gap-2 rounded-xl border border-white/10 px-3 text-xs font-black text-white/60 transition hover:border-white/30 hover:text-white">
+              Richieste →
+            </Link>
+          </div>
         </div>
 
         {/* Search */}
@@ -146,7 +157,7 @@ export default async function RistorantiPage({
           {/* Mobile cards */}
           <div className="grid gap-3 p-4 lg:hidden">
             {restaurants.length === 0 && (
-              <p className="py-8 text-center text-sm font-bold text-white/25">Nessun ristorante trovato.</p>
+              <p className="py-8 text-center text-sm font-bold text-white/25">Nessun locale trovato.</p>
             )}
             {restaurants.map((r) => (
               <div key={r.id} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4">
@@ -161,13 +172,21 @@ export default async function RistorantiPage({
                 </div>
                 {r.owner && (
                   <p className="mt-2 text-xs font-bold text-white/35">
-                    Owner:{' '}
+                    Proprietario:{' '}
                     <Link href={`/admin/users/${r.owner.id}`} className="text-[#ff6b00] hover:underline">
                       {r.owner.firstName ?? ''} {r.owner.lastName ?? ''} ({r.owner.email})
                     </Link>
                   </p>
                 )}
-                <p className="mt-1 font-mono text-[10px] text-white/25">/{r.slug} · {fmt(r.createdAt)}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="font-mono text-[10px] text-white/25">/{r.slug} · {fmt(r.createdAt)}</p>
+                  <Link
+                    href={`/admin/ristoranti/${r.id}`}
+                    className="rounded-xl border border-white/10 px-2.5 py-1 text-[10px] font-black text-white/50 transition hover:border-[#ff6b00]/50 hover:text-white"
+                  >
+                    ✏️ Modifica
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
@@ -177,7 +196,7 @@ export default async function RistorantiPage({
             <table className="w-full border-collapse text-sm">
               <thead className="bg-white/5">
                 <tr>
-                  {['Nome', 'Città', 'Tipo', 'Email', 'Owner', 'Stato', 'Creato'].map((h) => (
+                  {['Nome', 'Città', 'Tipo', 'Email', 'Proprietario', 'Stato', 'Creato', ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-[10px] font-black uppercase text-white/30">
                       {h}
                     </th>
@@ -187,8 +206,8 @@ export default async function RistorantiPage({
               <tbody>
                 {restaurants.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-sm font-bold text-white/25">
-                      Nessun ristorante trovato.
+                    <td colSpan={8} className="py-12 text-center text-sm font-bold text-white/25">
+                      Nessun locale trovato.
                     </td>
                   </tr>
                 )}
@@ -212,6 +231,14 @@ export default async function RistorantiPage({
                     </td>
                     <td className="px-4 py-3 text-xs font-bold text-white/30 whitespace-nowrap">
                       {fmt(r.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/ristoranti/${r.id}`}
+                        className="rounded-xl border border-white/10 px-2.5 py-1.5 text-[10px] font-black text-white/50 transition hover:border-[#ff6b00]/50 hover:text-white"
+                      >
+                        ✏️ Modifica
+                      </Link>
                     </td>
                   </tr>
                 ))}

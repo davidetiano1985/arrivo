@@ -25,7 +25,6 @@ export default async function AdminDashboardPage() {
     usersHighAttempts,
     activeAlerts, criticalAlerts,
     totalRestaurants,
-    recentEvents,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: twentyFourHAgo } } }),
@@ -38,15 +37,6 @@ export default async function AdminDashboardPage() {
     prisma.systemAlert.count({ where: { resolved: false } }),
     prisma.systemAlert.count({ where: { resolved: false, severity: 'critical' } }),
     prisma.restaurant.count(),
-    prisma.loginEvent.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 12,
-      select: {
-        id: true, createdAt: true, success: true,
-        ipAddress: true, provider: true,
-        user: { select: { email: true, firstName: true } },
-      },
-    }),
   ])
 
   let systemStatus: 'green' | 'yellow' | 'red' = 'green'
@@ -62,15 +52,6 @@ export default async function AdminDashboardPage() {
     activeAlerts, criticalAlerts,
     totalRestaurants,
     systemStatus,
-    recentEvents: recentEvents.map((e) => ({
-      id:        e.id,
-      createdAt: e.createdAt.toISOString(),
-      success:   e.success,
-      ipAddress: e.ipAddress,
-      provider:  e.provider,
-      userEmail: e.user?.email ?? null,
-      userName:  e.user?.firstName ?? null,
-    })),
   }
 
   return (
@@ -82,7 +63,7 @@ export default async function AdminDashboardPage() {
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-[#ff6b00]">Super Admin</p>
             <h1 className="mt-1 text-3xl font-black">
-              Control Room
+              Pannello Controllo
               <span className="ml-3 font-bold text-white/30 text-xl">— {name}</span>
             </h1>
           </div>
@@ -94,7 +75,7 @@ export default async function AdminDashboardPage() {
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            Alert Center
+            Centro Alert
             {activeAlerts > 0 && (
               <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">
                 {activeAlerts}

@@ -206,21 +206,21 @@ export default function AdminSidebar({
           />
           <NavItem
             href="/admin/alert"
-            label="Alert Center"
+            label="Centro Alert"
             badge={stats.activeAlerts > 0
               ? { value: stats.activeAlerts, color: alertColor }
               : undefined}
           />
 
-          <SectionLabel>Intelligence</SectionLabel>
-          <NavItem href="/admin/control-plane"  label="Control Plane"  dot={stats.systemStatus} />
-          <NavItem href="/admin/intelligence"   label="Intelligence"   />
-          <NavItem href="/admin/observability"  label="Observability"  />
+          <SectionLabel>Analisi</SectionLabel>
+          <NavItem href="/admin/control-plane"  label="Pannello Controllo"  dot={stats.systemStatus} />
+          <NavItem href="/admin/intelligence"   label="Analisi"   />
+          <NavItem href="/admin/observability"  label="Monitoraggio"  />
 
           <SectionLabel>Sistema</SectionLabel>
           <NavItem href="/admin/log"           label="Log Admin" />
           <NavItem href="/admin/eventi"        label="Eventi Live"   dot="blue" />
-          <NavItem href="/admin/system-health" label="System Health" dot={stats.systemStatus} />
+          <NavItem href="/admin/system-health" label="Stato Sistema" dot={stats.systemStatus} />
 
           <SectionLabel>Config</SectionLabel>
           <NavItem href="/admin/impostazioni" label="Impostazioni" />

@@ -13,15 +13,33 @@ function fmt(d: Date) {
   })
 }
 
-export default async function SicurezzaPage() {
+export default async function SicurezzaPage({
+  searchParams,
+}: {
+  searchParams: { logUser?: string; logIP?: string; logPage?: string }
+}) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
+
+  // Log Accessi filters
+  const logUser = searchParams.logUser?.trim() ?? ''
+  const logIP   = searchParams.logIP?.trim()   ?? ''
+  const logPage = Math.max(1, parseInt(searchParams.logPage ?? '1', 10))
+  const logPerPage = 30
 
   const now            = new Date()
   const tenMinutesAgo  = new Date(now.getTime() -  10 * 60 * 1000)
   const oneHourAgo     = new Date(now.getTime() -  60 * 60 * 1000)
   const twentyFourHAgo = new Date(now.getTime() -  24 * 60 * 60 * 1000)
   const sevenDaysAgo   = new Date(now.getTime() -   7 * 24 * 60 * 60 * 1000)
+
+  // Build filter for log accessi
+  const logWhere = {
+    ...(logUser ? {
+      user: { email: { contains: logUser, mode: 'insensitive' as const } },
+    } : {}),
+    ...(logIP ? { ipAddress: { contains: logIP } } : {}),
+  }
 
   const [
     // Aggregates
@@ -33,13 +51,14 @@ export default async function SicurezzaPage() {
     // At-risk users
     usersHighAttempts,
     suspendedUsers,
-    // Recent failures with IP
-    recentFailures,
     // Brute-force users detail
     bruteUsers,
     // Top failure IPs (last 24h)
     foreignIPEvents,
     redisTopIPs,
+    // Log Accessi (paginated, with filters)
+    logTotal,
+    loginLog,
   ] = await Promise.all([
     prisma.loginEvent.count({ where: { success: false, createdAt: { gte: tenMinutesAgo } } }),
     prisma.loginEvent.count({ where: { success: false, createdAt: { gte: oneHourAgo    } } }),
@@ -57,15 +76,6 @@ export default async function SicurezzaPage() {
       select: { id: true, email: true, firstName: true, lastName: true, updatedAt: true, role: true },
       orderBy: { updatedAt: 'desc' },
       take: 10,
-    }),
-    prisma.loginEvent.findMany({
-      where: { success: false, createdAt: { gte: twentyFourHAgo } },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      select: {
-        id: true, createdAt: true, ipAddress: true, provider: true,
-        user: { select: { email: true } },
-      },
     }),
     prisma.user.findMany({
       where: { loginAttempts: { gte: 10 } },
@@ -93,6 +103,19 @@ export default async function SicurezzaPage() {
     }),
     // Redis IP reputation data
     getTopRiskyIPs(20),
+    // Log Accessi count (with filters)
+    prisma.loginEvent.count({ where: logWhere }),
+    // Log Accessi records (with filters, paginated)
+    prisma.loginEvent.findMany({
+      where: logWhere,
+      orderBy: { createdAt: 'desc' },
+      skip:    (logPage - 1) * logPerPage,
+      take:    logPerPage,
+      select: {
+        id: true, createdAt: true, success: true, ipAddress: true, provider: true,
+        user: { select: { id: true, email: true, firstName: true, lastName: true } },
+      },
+    }),
   ])
 
   // Count IP frequencies
@@ -108,6 +131,7 @@ export default async function SicurezzaPage() {
 
   const total24h = success24h + failed24h
   const failRate24h = total24h > 0 ? Math.round((failed24h / total24h) * 100) : 0
+  const logTotalPages = Math.ceil(logTotal / logPerPage)
 
   const systemStatus =
     failed10min > 10 || bruteUsers.some((u) => u.loginAttempts >= 20)
@@ -139,7 +163,7 @@ export default async function SicurezzaPage() {
               <span className="text-xs font-black">{st.label}</span>
             </div>
             <Link href="/admin/alert" className="flex h-9 items-center gap-2 rounded-xl border border-white/10 px-3 text-xs font-black text-white/60 transition hover:border-white/30 hover:text-white">
-              Alert Center →
+              Centro Alert →
             </Link>
           </div>
         </div>
@@ -263,7 +287,7 @@ export default async function SicurezzaPage() {
                 <table className="w-full border-collapse text-sm">
                   <thead className="bg-white/5">
                     <tr>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">IP Address</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Indirizzo IP</th>
                       <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Fail/1h</th>
                       <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Risk Score</th>
                       <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Stato</th>
@@ -346,34 +370,141 @@ export default async function SicurezzaPage() {
           </section>
         </div>
 
-        {/* Recent failures feed */}
+        {/* ── Log Accessi ──────────────────────────────────────────────────── */}
         <section>
-          <p className="mb-3 text-xs font-black uppercase tracking-widest text-white/40">
-            Login falliti recenti (ultime 24h — max 50)
-          </p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-widest text-white/40">
+              Log Accessi — {logTotal} record{logUser || logIP ? ' (filtrati)' : ''}
+            </p>
+          </div>
+
+          {/* Filters */}
+          <form
+            method="GET"
+            action="/admin/sicurezza"
+            className="mb-4 flex flex-wrap items-center gap-2"
+          >
+            <div className="relative">
+              <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+              <input
+                type="text"
+                name="logUser"
+                defaultValue={logUser}
+                placeholder="Filtra per email utente…"
+                className="w-52 rounded-xl border border-white/10 bg-white/[0.04] py-2 pl-8 pr-3 text-xs font-bold text-white placeholder:text-white/25 outline-none focus:border-[#ff6b00]/50"
+              />
+            </div>
+            <div className="relative">
+              <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+              </svg>
+              <input
+                type="text"
+                name="logIP"
+                defaultValue={logIP}
+                placeholder="Filtra per IP…"
+                className="w-40 rounded-xl border border-white/10 bg-white/[0.04] py-2 pl-8 pr-3 text-xs font-bold text-white placeholder:text-white/25 outline-none focus:border-[#ff6b00]/50"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/60 transition hover:border-[#ff6b00]/40 hover:text-white"
+            >
+              Filtra
+            </button>
+            {(logUser || logIP) && (
+              <Link
+                href="/admin/sicurezza"
+                className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/40 transition hover:text-white"
+              >
+                ✕ Rimuovi filtri
+              </Link>
+            )}
+          </form>
+
           <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03]">
-            {recentFailures.length === 0 ? (
-              <p className="px-5 py-6 text-xs font-bold text-white/25">Nessun fallimento nelle ultime 24h. ✓</p>
+            {loginLog.length === 0 ? (
+              <p className="px-5 py-6 text-xs font-bold text-white/25">Nessun accesso trovato.</p>
             ) : (
-              <div className="divide-y divide-white/[0.05]">
-                {recentFailures.map((ev) => (
-                  <div key={ev.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="h-2 w-2 rounded-full bg-red-500" />
-                      <span className="text-xs font-bold text-white/60">{ev.user?.email ?? '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {ev.ipAddress && (
-                        <span className="font-mono text-[10px] text-white/30">{ev.ipAddress}</span>
+              <>
+                <table className="w-full border-collapse text-sm">
+                  <thead className="bg-white/5">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Stato</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Utente</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">IP</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Metodo</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loginLog.map((ev) => (
+                      <tr key={ev.id} className="border-t border-white/[0.05]">
+                        <td className="px-4 py-2.5">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black ${
+                            ev.success
+                              ? 'bg-emerald-500/15 text-emerald-400'
+                              : 'bg-red-500/15 text-red-400'
+                          }`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${ev.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                            {ev.success ? 'Accesso OK' : 'Fallito'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {ev.user ? (
+                            <Link href={`/admin/users/${ev.user.id}`} className="text-xs font-black text-white/70 hover:text-[#ff6b00]">
+                              {ev.user.firstName ?? ''} {ev.user.lastName ?? ''}{' '}
+                              <span className="font-bold text-white/35">{ev.user.email}</span>
+                            </Link>
+                          ) : (
+                            <span className="text-xs font-bold text-white/30">Utente rimosso</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-[11px] text-white/40">
+                          {ev.ipAddress ?? '—'}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/40">
+                            {ev.provider}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-[10px] text-white/25 whitespace-nowrap">
+                          {fmt(ev.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                {logTotalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-white/[0.07] px-4 py-3">
+                    <p className="text-xs font-bold text-white/30">
+                      Pagina {logPage} di {logTotalPages} · {logTotal} accessi
+                    </p>
+                    <div className="flex gap-1.5">
+                      {logPage > 1 && (
+                        <Link
+                          href={`/admin/sicurezza?${new URLSearchParams({ ...(logUser ? { logUser } : {}), ...(logIP ? { logIP } : {}), logPage: String(logPage - 1) })}`}
+                          className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white"
+                        >
+                          ← Prec
+                        </Link>
                       )}
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/40">
-                        {ev.provider}
-                      </span>
-                      <span className="font-mono text-[10px] text-white/25">{fmt(ev.createdAt)}</span>
+                      {logPage < logTotalPages && (
+                        <Link
+                          href={`/admin/sicurezza?${new URLSearchParams({ ...(logUser ? { logUser } : {}), ...(logIP ? { logIP } : {}), logPage: String(logPage + 1) })}`}
+                          className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black text-white/60 hover:text-white"
+                        >
+                          Succ →
+                        </Link>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </section>

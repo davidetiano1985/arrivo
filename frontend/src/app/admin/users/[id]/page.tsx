@@ -78,6 +78,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
     CREATE_ALERT:         'Crea alert',
     FORCE_LOGOUT:         'Forza logout',
     VIEW_AS_USER:         'Visualizza come utente',
+    EDIT_USER:            'Modifica dati utente',
   }
 
   return (
@@ -138,7 +139,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
                 ['Telefono',            user.phone ?? '—'],
                 ['Ruolo',               null],
                 ['Metodo accesso',      method],
-                ['Email verificata',    user.emailVerified ? fmt(user.emailVerified) : 'No'],
+                ['Email verificata',    isGoogle ? 'VERIFICATA ✓' : user.emailVerified ? fmt(user.emailVerified) : 'No'],
                 ['Registrato il',       fmt(user.createdAt)],
                 ['Ultimo aggiornamento', fmt(user.updatedAt)],
                 ['Tentativi login fail.', String(user.loginAttempts)],
@@ -167,6 +168,10 @@ export default async function UserDetailPage({ params }: { params: { id: string 
               hasPassword={!!user.password}
               loginAttempts={user.loginAttempts}
               tokenVersion={user.tokenVersion}
+              firstName={user.firstName ?? ''}
+              lastName={user.lastName  ?? ''}
+              email={user.email}
+              phone={user.phone ?? ''}
             />
           </div>
         </div>
