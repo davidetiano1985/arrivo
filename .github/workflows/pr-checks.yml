@@ -15,6 +15,8 @@ jobs:
     name: 🌐 Frontend (Next.js)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_dummy
 
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +30,10 @@ jobs:
       - name: npm ci
         working-directory: frontend
         run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: frontend
+        run: npx prisma generate
 
       - name: TypeScript
         working-directory: frontend

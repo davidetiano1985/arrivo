@@ -31,6 +31,12 @@ jobs:
       run:
         working-directory: frontend
 
+    # DATABASE_URL (dummy) is required so `prisma generate` can parse prisma.config.ts
+    # without attempting a real DB connection.  Generate runs during npm ci postinstall
+    # or the explicit step below — only type generation is needed, not a live DB.
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_dummy
+
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +48,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        # Generates .prisma/client/ types so TypeScript can resolve @prisma/client imports.
+        # DATABASE_URL above is a placeholder — no real DB connection is made here.
 
       - name: TypeScript check
         run: npx tsc --noEmit
