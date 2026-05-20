@@ -46,16 +46,21 @@ export default async function SystemHealthPage() {
     return `${m}m ${s % 60}s`
   }
 
+  const googleOAuth = (
+    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  ) ? 'active' : 'missing' as const
+
   const initialData = {
-    dbStatus:  dbStatus === 'error' ? 'error' : dbLatency > 200 ? 'slow' : 'ok',
+    dbStatus:    dbStatus === 'error' ? 'error' : dbLatency > 200 ? 'slow' : 'ok',
     dbLatency,
     memUsedMB,
     memTotalMB,
-    memPercent: Math.round((memUsedMB / memTotalMB) * 100),
+    memPercent:  Math.round((memUsedMB / memTotalMB) * 100),
     uptimeSec,
     errorRate,
     failed24h,
     total24h,
+    googleOAuth,
   } as const
 
   return (

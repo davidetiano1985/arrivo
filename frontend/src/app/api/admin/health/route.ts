@@ -43,21 +43,28 @@ async function handleGET(req: NextRequest) {
   if      (dbStatus === 'error') dbHealthStatus = 'error'
   else if (dbLatency > 200)      dbHealthStatus = 'slow'
 
+  // ── Google OAuth status (config check — no secret exposed) ───────────────────
+  const googleOAuth: 'active' | 'missing' =
+    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? 'active'
+      : 'missing'
+
   // ── Overall health status ────────────────────────────────────────────────────
   let overallStatus: 'green' | 'yellow' | 'red' = 'green'
   if (dbStatus === 'error' || memPercent > 90 || errorRate > 60) {
     overallStatus = 'red'
-  } else if (dbLatency > 100 || memPercent > 70 || errorRate > 30) {
+  } else if (dbLatency > 100 || memPercent > 70 || errorRate > 30 || googleOAuth === 'missing') {
     overallStatus = 'yellow'
   }
 
   return NextResponse.json({
-    db:     { status: dbHealthStatus, latency: dbLatency },
-    memory: { used: memUsedMB, total: memTotalMB, percent: memPercent },
+    db:          { status: dbHealthStatus, latency: dbLatency },
+    memory:      { used: memUsedMB, total: memTotalMB, percent: memPercent },
     uptime,
     errorRate,
     failed24h,
     total24h,
+    googleOAuth,
     overallStatus,
     timestamp: new Date().toISOString(),
   })

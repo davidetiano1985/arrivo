@@ -15,9 +15,11 @@ set -euo pipefail
 
 APP_DIR="/root/arrivo/frontend"
 APP_NAME="arrivo"
-HEALTH_URL="https://arrivoapp.it/api/health"
-MAX_HEALTH_WAIT=60     # seconds to wait for health check after reload
+BASE_URL="https://arrivoapp.it"
+HEALTH_URL="${BASE_URL}/api/health"
+MAX_HEALTH_WAIT=60     # seconds to wait for health check after restart
 DEPLOY_INFO="$APP_DIR/.deploy-info.json"
+VALIDATE_SCRIPT="/root/arrivo/scripts/validate-production-env.js"
 
 GIT_SHA="${1:-}"      # optional: passed by GitHub Actions
 DEPLOYER="${2:-cron}" # optional: passed by GitHub Actions
@@ -68,6 +70,16 @@ set -a
 # shellcheck disable=SC1091
 source "$APP_DIR/.env" 2>/dev/null || true
 set +a
+
+# ── 5b. Validate required env vars ────────────────────────────────────────────
+# Runs AFTER source .env so all variables are available.
+# Exits 1 and aborts the deploy if any required var is missing or empty.
+# Never prints actual values — only masked previews (abc...xyz).
+echo "→ Validating production env vars..."
+if ! node "$VALIDATE_SCRIPT"; then
+  echo "✗ ENV VALIDATION FAILED — deploy aborted. Fix .env and retry."
+  exit 1
+fi
 
 # ── 6a. Backup current build for rollback ─────────────────────────────────────
 echo "→ Backing up current build..."
@@ -167,6 +179,33 @@ done
 
 # ── 10. Cleanup backup on success ─────────────────────────────────────────────
 rm -rf .next.bak 2>/dev/null || true
+
+# ── 11. Google OAuth post-deploy check ────────────────────────────────────────
+# Verifica che il provider Google sia attivo e il redirect 302 funzioni.
+# Non testa login reale — solo che le credenziali siano caricate in memoria.
+echo "→ Google OAuth post-deploy check..."
+PROVIDERS=$(curl -sf "${BASE_URL}/api/auth/providers" 2>/dev/null || echo '{}')
+if echo "$PROVIDERS" | grep -q '"google"'; then
+  echo "  ✓ Google provider: ACTIVE"
+else
+  echo "  ⚠ Google provider: NOT FOUND — verifica GOOGLE_CLIENT_ID in .env"
+fi
+
+SIGNIN_HTTP=$(curl -s -o /dev/null -w '%{http_code}' \
+  "${BASE_URL}/api/auth/signin/google" 2>/dev/null || echo '000')
+if [ "$SIGNIN_HTTP" = "302" ]; then
+  echo "  ✓ /api/auth/signin/google → 302 (OAuth redirect OK)"
+else
+  echo "  ⚠ /api/auth/signin/google → HTTP $SIGNIN_HTTP (atteso 302)"
+fi
+
+CALLBACK_HTTP=$(curl -s -o /dev/null -w '%{http_code}' \
+  "${BASE_URL}/api/auth/callback/google" 2>/dev/null || echo '000')
+if [ "$CALLBACK_HTTP" != "000" ]; then
+  echo "  ✓ /api/auth/callback/google → HTTP $CALLBACK_HTTP (endpoint attivo)"
+else
+  echo "  ⚠ /api/auth/callback/google non risponde"
+fi
 
 echo ""
 echo "✓ Deploy complete in ${WAITED}s"

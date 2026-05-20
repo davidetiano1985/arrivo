@@ -3,15 +3,16 @@
 import { useEffect, useRef, useState } from 'react'
 
 type HealthData = {
-  dbStatus:   string
-  dbLatency:  number
-  memUsedMB:  number
-  memTotalMB: number
-  memPercent: number
-  uptimeSec:  number
-  errorRate:  number
-  failed24h:  number
-  total24h:   number
+  dbStatus:    string
+  dbLatency:   number
+  memUsedMB:   number
+  memTotalMB:  number
+  memPercent:  number
+  uptimeSec:   number
+  errorRate:   number
+  failed24h:   number
+  total24h:    number
+  googleOAuth: 'active' | 'missing'
 }
 
 function StatusBadge({ status }: { status: 'ok' | 'slow' | 'error' | string }) {
@@ -61,15 +62,16 @@ export default function SystemHealthLive({ initialData }: { initialData: HealthD
         if (res.ok) {
           const h = await res.json()
           setData({
-            dbStatus:   h.db.status,
-            dbLatency:  h.db.latency,
-            memUsedMB:  h.memory.used,
-            memTotalMB: h.memory.total,
-            memPercent: h.memory.percent,
-            uptimeSec:  h.uptime,
-            errorRate:  h.errorRate,
-            failed24h:  h.failed24h,
-            total24h:   h.total24h,
+            dbStatus:    h.db.status,
+            dbLatency:   h.db.latency,
+            memUsedMB:   h.memory.used,
+            memTotalMB:  h.memory.total,
+            memPercent:  h.memory.percent,
+            uptimeSec:   h.uptime,
+            errorRate:   h.errorRate,
+            failed24h:   h.failed24h,
+            total24h:    h.total24h,
+            googleOAuth: h.googleOAuth ?? 'missing',
           })
           setLastUpdate(new Date())
         }
@@ -140,6 +142,28 @@ export default function SystemHealthLive({ initialData }: { initialData: HealthD
             {data.failed24h} falliti / {data.total24h} totali
           </p>
           <ProgressBar percent={data.errorRate} color={errorColor} />
+        </div>
+
+        {/* Google OAuth */}
+        <div className={`rounded-2xl border p-5 ${
+          data.googleOAuth === 'missing'
+            ? 'border-amber-400/30 bg-amber-400/[0.05]'
+            : 'border-white/[0.07] bg-white/[0.04]'
+        }`}>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Google OAuth</p>
+            <StatusBadge status={data.googleOAuth === 'active' ? 'ok' : 'slow'} />
+          </div>
+          <p className={`mt-3 text-2xl font-black ${
+            data.googleOAuth === 'active' ? 'text-emerald-400' : 'text-amber-400'
+          }`}>
+            {data.googleOAuth === 'active' ? 'ACTIVE' : 'MISSING'}
+          </p>
+          <p className="mt-0.5 text-xs font-bold text-white/30">
+            {data.googleOAuth === 'active'
+              ? 'Provider configurato · Login Google attivo'
+              : 'GOOGLE_CLIENT_ID / SECRET non impostati'}
+          </p>
         </div>
 
         {/* Email (informational — no live check yet) */}
