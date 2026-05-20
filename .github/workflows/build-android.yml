@@ -93,6 +93,18 @@ jobs:
           EXPO_NO_GIT_STATUS: '1'   # salta check git status
         run: npx expo prebuild --platform android --clean
 
+      # ── Patch build.gradle — bundle JS in ALL variants (no Metro) ───────────
+      # expo prebuild --clean regenerates android/ from scratch, so this patch
+      # must run AFTER prebuild. Sets debuggableVariants=[] so assembleRelease
+      # (and assembleDebug) always embed index.android.bundle in the APK.
+      - name: Patch build.gradle — standalone bundle
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          sed -i 's|// debuggableVariants = \["liteDebug", "prodDebug"\]|debuggableVariants = []   // standalone APK — JS bundled inside, no Metro|' app/build.gradle
+          echo "✅ debuggableVariants patched:"
+          grep -n 'debuggableVariants' app/build.gradle || echo "⚠ pattern not found — checking react block:"
+          grep -n -A2 'react {' app/build.gradle | head -10
+
       # ── Patch compileSdk se android-36 non disponibile ───────────────────────
       - name: Patch compileSdk fallback
         working-directory: ${{ env.APP_DIR }}/android
@@ -123,19 +135,22 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('arrivo-build/android/**/*.gradle*', 'arrivo-build/android/**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      # ── Build DEBUG ───────────────────────────────────────────────────────────
-      - name: Build DEBUG APK
+      # ── Build STANDALONE APK (default) ───────────────────────────────────────
+      # Uses assembleRelease so the JS bundle is ALWAYS included inside the APK.
+      # The project's debug.keystore is used for signing — no extra secrets needed.
+      # Result: installable on any Android device without Metro running.
+      - name: Build STANDALONE APK
         if: ${{ github.event.inputs.build_type != 'release' }}
         working-directory: ${{ env.APP_DIR }}/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug \
+          ./gradlew assembleRelease \
             --no-daemon \
             --build-cache \
             -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=512m" \
             2>&1
 
-      # ── Build RELEASE (firmato con keystore) ──────────────────────────────────
+      # ── Build RELEASE (firmato con keystore di produzione) ────────────────────
       - name: Decode keystore
         if: ${{ github.event.inputs.build_type == 'release' }}
         id: keystore
