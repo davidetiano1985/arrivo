@@ -57,7 +57,7 @@ export default async function RistorantePage() {
             <h2 className="text-xl font-black text-white">Nessun locale collegato</h2>
             <p className="mt-2 text-sm font-bold text-white/45 leading-6">
               Il tuo account non è ancora associato a nessun locale.<br />
-              Se hai già inviato una richiesta, attendi l'approvazione.
+              Se hai già inviato una richiesta, attendi l&apos;approvazione.
             </p>
             <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Link

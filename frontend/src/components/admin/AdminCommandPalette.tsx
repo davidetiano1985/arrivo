@@ -173,7 +173,7 @@ export default function AdminCommandPalette({
 
           {query.length >= 2 && !loading && !hasResults && (
             <div className="px-5 py-8 text-center">
-              <p className="text-sm font-bold text-white/25">Nessun risultato per "{query}"</p>
+              <p className="text-sm font-bold text-white/25">Nessun risultato per &quot;{query}&quot;</p>
             </div>
           )}
 
