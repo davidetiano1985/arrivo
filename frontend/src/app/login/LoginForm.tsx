@@ -49,9 +49,11 @@ function EyeOffIcon() {
 export default function LoginForm({
   errorParam,
   callbackUrl,
+  googleEnabled = false,
 }: {
-  errorParam?: string
-  callbackUrl?: string
+  errorParam?:    string
+  callbackUrl?:   string
+  googleEnabled?: boolean
 }) {
   const router = useRouter()
   const [email, setEmail]                 = useState('')
@@ -194,18 +196,22 @@ export default function LoginForm({
             </Link>
           </p>
 
-          <div className="relative mt-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-black/10" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-xs font-bold text-black/40">
-                oppure
-              </span>
-            </div>
-          </div>
+          {googleEnabled && (
+            <>
+              <div className="relative mt-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-black/10" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-xs font-bold text-black/40">
+                    oppure
+                  </span>
+                </div>
+              </div>
 
-          <GoogleSignInButton callbackUrl={callbackUrl ?? '/'} label="Accedi con Google" />
+              <GoogleSignInButton callbackUrl={callbackUrl ?? '/'} label="Accedi con Google" />
+            </>
+          )}
         </div>
       </div>
     </main>

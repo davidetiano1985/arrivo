@@ -1,7 +1,9 @@
 #!/bin/bash
-# Zero-downtime deploy script for Arrivo VPS.
+# Deploy script for Arrivo VPS.
 #
-# Strategy: pm2 reload (graceful restart) — never drops in-flight requests.
+# Strategy: pm2 restart (hard restart) — ~1-2s downtime, but prevents
+# Next.js "Failed to find Server Action" errors that occur when pm2 reload
+# briefly runs two workers with different Server Action IDs simultaneously.
 # Build backup + rollback: keeps .next.bak for instant revert on failure.
 # Migration: sources .env so DATABASE_URL is real, not placeholder.
 #
@@ -78,7 +80,7 @@ if ! npm run build; then
     echo "→ Restoring previous build..."
     rm -rf .next
     mv .next.bak .next
-    pm2 reload "$APP_NAME" --update-env || true
+    pm2 restart "$APP_NAME" --update-env || true
     echo "  ✓ Previous build restored — app still running"
   else
     echo "  ⚠ No backup available — app may be in a degraded state"
@@ -112,9 +114,9 @@ cat > "$DEPLOY_INFO" <<JSONEOF
 JSONEOF
 echo "→ Deploy info: $COMMIT_SHORT @ $DEPLOYED_AT"
 
-# ── 8. Graceful reload (zero-downtime) ────────────────────────────────────────
-echo "→ Reloading PM2 (graceful)..."
-pm2 reload "$APP_NAME" --update-env
+# ── 8. Hard restart (prevents Server Action stale-worker ID mismatch) ─────────
+echo "→ Restarting PM2 (hard restart + env refresh)..."
+pm2 restart "$APP_NAME" --update-env
 
 # ── 9. Health check with rollback ─────────────────────────────────────────────
 echo "→ Health check (up to ${MAX_HEALTH_WAIT}s)..."
@@ -128,11 +130,11 @@ until curl -sf "$HEALTH_URL" | grep -q '"status":"ok"'; do
       echo "→ Restoring previous build..."
       rm -rf .next
       mv .next.bak .next
-      pm2 reload "$APP_NAME" --update-env || true
+      pm2 restart "$APP_NAME" --update-env || true
       echo "  ✓ Rollback complete"
     else
       echo "  ⚠ No backup available for rollback"
-      pm2 reload "$APP_NAME" --update-env || true
+      pm2 restart "$APP_NAME" --update-env || true
     fi
 
     # Update deploy info with rollback status

@@ -8,6 +8,7 @@ export default function RegistratiPage({
 }: {
   searchParams: { errore?: string }
 }) {
+  const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
       <div className="w-full max-w-sm">
@@ -41,18 +42,22 @@ export default function RegistratiPage({
             </Link>
           </p>
 
-          <div className="relative mt-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-black/10" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-xs font-bold text-black/40">
-                oppure
-              </span>
-            </div>
-          </div>
+          {googleEnabled && (
+            <>
+              <div className="relative mt-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-black/10" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-xs font-bold text-black/40">
+                    oppure
+                  </span>
+                </div>
+              </div>
 
-          <GoogleSignInButton label="Registrati con Google" />
+              <GoogleSignInButton label="Registrati con Google" />
+            </>
+          )}
 
           <div className="mt-5 rounded-2xl bg-black/[0.04] p-4">
             <p className="text-xs font-black uppercase text-black/45">

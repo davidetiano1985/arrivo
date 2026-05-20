@@ -24,19 +24,24 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: '/login', error: '/login' },
 
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          // 'consent' forces Google to show the full authorization screen on
-          // every login — no silent re-authorization, no "bypass" perception.
-          prompt: 'consent',
-          access_type: 'online',
-        },
-      },
-    }),
+    // GoogleProvider is only initialized when both credentials are present.
+    // If GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are missing or empty the
+    // provider is skipped entirely — prevents "client_id is required" errors.
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [GoogleProvider({
+          clientId:     process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          allowDangerousEmailAccountLinking: true,
+          authorization: {
+            params: {
+              // 'consent' forces Google to show the full authorization screen on
+              // every login — no silent re-authorization, no "bypass" perception.
+              prompt:      'consent',
+              access_type: 'online',
+            },
+          },
+        })]
+      : []),
 
     CredentialsProvider({
       name: 'credentials',

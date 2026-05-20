@@ -25,10 +25,13 @@ export default async function LoginPage({
     }
   }
 
+  const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+
   return (
     <LoginForm
       callbackUrl={searchParams.callbackUrl}
       errorParam={searchParams.error}
+      googleEnabled={googleEnabled}
     />
   )
 }
