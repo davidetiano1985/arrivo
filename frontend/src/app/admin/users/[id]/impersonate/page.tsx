@@ -7,8 +7,9 @@ import { getServerSession } from 'next-auth'
 import { redirect }         from 'next/navigation'
 import Link                 from 'next/link'
 
-import { authOptions } from '@/lib/auth'
-import { prisma }      from '@/lib/prisma'
+import { authOptions }    from '@/lib/auth'
+import { prisma }         from '@/lib/prisma'
+import { logAdminAction } from '@/lib/adminLog'
 
 function fmt(d: Date | null | undefined) {
   if (!d) return '—'
@@ -48,8 +49,19 @@ export default async function ImpersonatePage({ params }: { params: { id: string
 
   if (!user) notFound()
 
-  const isGoogle = user.accounts.some((a) => a.provider === 'google')
+  const adminId    = (session.user as { id?: string })?.id    ?? ''
   const adminEmail = (session.user as { email?: string })?.email ?? ''
+  const isGoogle   = user.accounts.some((a) => a.provider === 'google')
+
+  // Audit log every impersonation view — fire-and-forget
+  logAdminAction({
+    adminId,
+    adminEmail,
+    targetId:    user.id,
+    targetEmail: user.email,
+    action:      'VIEW_AS_USER',
+    details:     `Visualizzazione profilo come utente (sola lettura)`,
+  }).catch(() => {})
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-black px-4 py-6 sm:px-6 sm:py-8">

@@ -77,6 +77,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
     RESOLVE_ALERT:        'Risolvi alert',
     CREATE_ALERT:         'Crea alert',
     FORCE_LOGOUT:         'Forza logout',
+    VIEW_AS_USER:         'Visualizza come utente',
   }
 
   return (
