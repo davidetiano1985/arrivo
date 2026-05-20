@@ -24,8 +24,16 @@ function EyeOffIcon() {
   )
 }
 
+// Detects a stale Server Action call (app was redeployed; browser has old bundle).
+// The error message from Next.js contains this literal string.
+function isStaleAction(err: unknown): boolean {
+  const msg = ((err as Error)?.message ?? '').toLowerCase()
+  return msg.includes('failed to find server action') || msg.includes('older or newer deployment')
+}
+
 export default function RegistrazioneForm() {
   const [errore, setErrore] = useState('')
+  const [stale,  setStale]  = useState(false)
   const [isPending, startTransition] = useTransition()
   const [mostraPassword, setMostraPassword] = useState(false)
   const [mostraConferma, setMostraConferma] = useState(false)
@@ -33,6 +41,7 @@ export default function RegistrazioneForm() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setErrore('')
+    setStale(false)
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
       try {
@@ -43,6 +52,7 @@ export default function RegistrazioneForm() {
         // router can handle them. Without this, redirect() in Server Actions
         // is silently caught and the navigation never happens.
         if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) throw err
+        if (isStaleAction(err)) { setStale(true); return }
         setErrore('Qualcosa è andato storto. Aggiorna la pagina e riprova.')
       }
     })
@@ -163,6 +173,21 @@ export default function RegistrazioneForm() {
           </button>
         </div>
       </div>
+
+      {stale && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2.5">
+          <p className="text-sm font-bold text-amber-700">
+            L'app è stata aggiornata. Ricarica la pagina e riprova.
+          </p>
+          <button
+            className="mt-1.5 text-xs font-black text-[#ff6b00] hover:underline"
+            onClick={() => window.location.reload()}
+            type="button"
+          >
+            ↺ Ricarica pagina
+          </button>
+        </div>
+      )}
 
       {errore && (
         <div className="rounded-xl bg-red-50 px-3 py-2.5">

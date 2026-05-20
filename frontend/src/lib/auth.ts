@@ -21,7 +21,7 @@ const SUSPENSION_RECHECK_MS = 5 * 60 * 1000
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt', maxAge: JWT_MAX_AGE },
-  pages: { signIn: '/login', error: '/login' },
+  pages: { signIn: '/login', error: '/auth/error' },
 
   providers: [
     // GoogleProvider is only initialized when both credentials are present.

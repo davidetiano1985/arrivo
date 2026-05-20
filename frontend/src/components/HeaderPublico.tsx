@@ -18,7 +18,7 @@ export default function HeaderPublico() {
   const firstName = (session?.user as { firstName?: string } | undefined)?.firstName
   const lastName  = (session?.user as { lastName?: string }  | undefined)?.lastName
   const fullName  = [firstName, lastName].filter(Boolean).join(' ').trim()
-  const greeting  = fullName || session?.user?.name || session?.user?.email?.split('@')[0] || ''
+  const greeting  = fullName || session?.user?.name || session?.user?.email?.split('@')[0] || 'Account'
 
   return (
     <div className="flex shrink-0 items-center gap-2">

@@ -24,6 +24,11 @@ import { useState, useTransition } from 'react'
 
 import { completaProfiloGoogle } from './actions'
 
+function isStaleAction(err: unknown): boolean {
+  const msg = ((err as Error)?.message ?? '').toLowerCase()
+  return msg.includes('failed to find server action') || msg.includes('older or newer deployment')
+}
+
 export default function CompletaProfiloPage() {
   const { update } = useSession()
   const router = useRouter()
@@ -31,21 +36,25 @@ export default function CompletaProfiloPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName,  setLastName]  = useState('')
   const [error,     setError]     = useState('')
+  const [stale,     setStale]     = useState(false)
   const [isPending, startTransition] = useTransition()
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setStale(false)
     startTransition(async () => {
-      const result = await completaProfiloGoogle(firstName, lastName)
-      if (result.error) {
-        setError(result.error)
-        return
+      try {
+        const result = await completaProfiloGoogle(firstName, lastName)
+        if (result.error) { setError(result.error); return }
+        // Refresh JWT → profileIncomplete becomes false in the session,
+        // then navigate home. router.replace prevents back-button loop.
+        await update()
+        router.replace('/')
+      } catch (err) {
+        if (isStaleAction(err)) { setStale(true); return }
+        setError('Errore imprevisto. Riprova.')
       }
-      // Refresh JWT → profileIncomplete becomes false in the session,
-      // then navigate home. router.replace prevents back-button loop.
-      await update()
-      router.replace('/')
     })
   }
 
@@ -109,6 +118,22 @@ export default function CompletaProfiloPage() {
               value={lastName}
             />
           </div>
+
+          {/* App aggiornata — ricarica richiesta */}
+          {stale && (
+            <div className="rounded-xl bg-amber-950/40 px-4 py-3">
+              <p className="text-xs font-black text-amber-400">
+                L'app è stata aggiornata. Ricarica la pagina e riprova.
+              </p>
+              <button
+                className="mt-1.5 text-xs font-black text-[#ff6b00] hover:underline"
+                onClick={() => window.location.reload()}
+                type="button"
+              >
+                ↺ Ricarica pagina
+              </button>
+            </div>
+          )}
 
           {/* Errore */}
           {error && (

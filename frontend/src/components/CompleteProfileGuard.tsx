@@ -5,11 +5,17 @@ import { useState, useTransition } from 'react'
 
 import { completaProfiloGoogle } from '@/app/completa-profilo/actions'
 
+function isStaleAction(err: unknown): boolean {
+  const msg = ((err as Error)?.message ?? '').toLowerCase()
+  return msg.includes('failed to find server action') || msg.includes('older or newer deployment')
+}
+
 export default function CompleteProfileGuard() {
   const { data: session, update } = useSession()
   const [firstName, setFirstName] = useState('')
   const [lastName,  setLastName]  = useState('')
   const [error,     setError]     = useState('')
+  const [stale,     setStale]     = useState(false)
   const [isPending, startTransition] = useTransition()
 
   // Read from session — populated by the session callback in auth.ts
@@ -22,15 +28,18 @@ export default function CompleteProfileGuard() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setStale(false)
     startTransition(async () => {
-      const result = await completaProfiloGoogle(firstName, lastName)
-      if (result.error) {
-        setError(result.error)
-        return
+      try {
+        const result = await completaProfiloGoogle(firstName, lastName)
+        if (result.error) { setError(result.error); return }
+        // Refresh JWT so profileIncomplete becomes false in the session.
+        // The jwt 'update' trigger re-reads from DB → returns false.
+        await update()
+      } catch (err) {
+        if (isStaleAction(err)) { setStale(true); return }
+        setError('Errore imprevisto. Riprova.')
       }
-      // Refresh JWT so profileIncomplete becomes false in the session.
-      // The jwt 'update' trigger re-reads from DB → returns false.
-      await update()
     })
   }
 
@@ -82,6 +91,22 @@ export default function CompleteProfileGuard() {
               className="h-11 w-full rounded-xl border border-black/15 bg-white px-4 text-sm font-bold text-black outline-none transition focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 disabled:opacity-60"
             />
           </div>
+
+          {/* App aggiornata — ricarica richiesta */}
+          {stale && (
+            <div className="rounded-xl bg-amber-50 px-4 py-3">
+              <p className="text-xs font-black text-amber-700">
+                L'app è stata aggiornata. Ricarica la pagina e riprova.
+              </p>
+              <button
+                className="mt-1.5 text-xs font-black text-[#ff6b00] hover:underline"
+                onClick={() => window.location.reload()}
+                type="button"
+              >
+                ↺ Ricarica pagina
+              </button>
+            </div>
+          )}
 
           {/* Errore */}
           {error && (
