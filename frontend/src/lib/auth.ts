@@ -141,6 +141,7 @@ export const authOptions: NextAuthOptions = {
           name:         user.name ?? '',
           role:         user.role,
           firstName:    user.firstName ?? '',
+          lastName:     user.lastName  ?? '',
           hasPassword:  true,
           tokenVersion: user.tokenVersion, // [Fix H1] stored in JWT for revocation checks
         }
@@ -219,6 +220,7 @@ export const authOptions: NextAuthOptions = {
             const dbUser = await prisma.user.findUnique({ where: { id } })
             if (dbUser) {
               token.firstName         = dbUser.firstName        ?? ''
+              token.lastName          = dbUser.lastName         ?? ''
               token.role              = dbUser.role
               token.profileIncomplete = dbUser.profileIncomplete ?? false
               token.tokenVersion      = dbUser.tokenVersion       // [Fix H1]
@@ -247,6 +249,7 @@ export const authOptions: NextAuthOptions = {
           token.id               = user.id
           token.role             = u.role
           token.firstName        = u.firstName ?? ''
+          token.lastName         = (u as { lastName?: string }).lastName ?? ''
           token.hasPassword      = u.hasPassword ?? false
           token.profileIncomplete = false
           token.tokenVersion     = u.tokenVersion ?? 0 // [Fix H1]
@@ -260,17 +263,48 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const dbUser = await prisma.user.findUnique({ where: { email } })
-          token.id               = dbUser?.id          ?? user.id
-          token.role             = dbUser?.role         ?? 'cliente'
-          token.firstName        = dbUser?.firstName    ?? ''
-          token.hasPassword      = dbUser?.password     ? true : false
-          token.profileIncomplete = dbUser?.profileIncomplete ?? false
-          token.tokenVersion     = dbUser?.tokenVersion ?? 0 // [Fix H1]
-          token.sessionCheck     = Date.now()
+
+          // ── New Google user: PrismaAdapter created the record but only set
+          //    name/email/image — firstName/lastName/profileIncomplete are null.
+          //    Parse the full name from user.name (provided by Google OAuth)
+          //    and update the DB so the profile guard shows if name is partial.
+          if (dbUser && !dbUser.firstName && !dbUser.lastName && user.name) {
+            const parts       = (user.name as string).trim().split(/\s+/)
+            const parsedFirst = parts[0] ?? ''
+            const parsedLast  = parts.slice(1).join(' ') || ''
+            const incomplete  = !parsedFirst || !parsedLast
+            await prisma.user.update({
+              where: { id: dbUser.id },
+              data: {
+                firstName:         parsedFirst || null,
+                lastName:          parsedLast  || null,
+                name:              user.name   as string,
+                profileIncomplete: incomplete,
+              },
+            }).catch((e) => console.error('[auth] jwt new-user name update error:', e))
+            token.id               = dbUser.id
+            token.role             = dbUser.role ?? 'cliente'
+            token.firstName        = parsedFirst
+            token.lastName         = parsedLast
+            token.hasPassword      = false
+            token.profileIncomplete = incomplete
+            token.tokenVersion     = dbUser.tokenVersion ?? 0
+            token.sessionCheck     = Date.now()
+          } else {
+            token.id               = dbUser?.id          ?? user.id
+            token.role             = dbUser?.role         ?? 'cliente'
+            token.firstName        = dbUser?.firstName    ?? ''
+            token.lastName         = dbUser?.lastName     ?? ''
+            token.hasPassword      = dbUser?.password     ? true : false
+            token.profileIncomplete = dbUser?.profileIncomplete ?? false
+            token.tokenVersion     = dbUser?.tokenVersion ?? 0 // [Fix H1]
+            token.sessionCheck     = Date.now()
+          }
         } catch (err) {
           console.error('[auth] jwt Google lookup error:', err)
           token.role             = (token.role             as string)  ?? 'cliente'
           token.firstName        = (token.firstName        as string)  ?? ''
+          token.lastName         = (token.lastName         as string)  ?? ''
           token.hasPassword      = (token.hasPassword      as boolean) ?? false
           token.profileIncomplete = (token.profileIncomplete as boolean) ?? false
           token.tokenVersion     = (token.tokenVersion     as number)  ?? 0
@@ -333,12 +367,14 @@ export const authOptions: NextAuthOptions = {
           role: string
           id: string
           firstName: string
+          lastName: string
           hasPassword: boolean
           profileIncomplete: boolean
         }
         u.role             = (token.role             as string)  ?? 'cliente'
         u.id               = (token.id               as string)  ?? ''
         u.firstName        = (token.firstName        as string)  ?? ''
+        u.lastName         = (token.lastName         as string)  ?? ''
         u.hasPassword      = (token.hasPassword      as boolean) ?? false
         u.profileIncomplete = (token.profileIncomplete as boolean) ?? false
       }

@@ -38,7 +38,11 @@ export default function RegistrazioneForm() {
       try {
         const result = await registraCliente(formData)
         if (result?.error) setErrore(result.error)
-      } catch {
+      } catch (err) {
+        // Re-throw Next.js internal errors (redirect, notFound, etc.) so the
+        // router can handle them. Without this, redirect() in Server Actions
+        // is silently caught and the navigation never happens.
+        if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) throw err
         setErrore('Qualcosa è andato storto. Aggiorna la pagina e riprova.')
       }
     })

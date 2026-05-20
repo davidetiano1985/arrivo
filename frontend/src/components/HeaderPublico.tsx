@@ -14,9 +14,11 @@ function PinIcon() {
 
 export default function HeaderPublico() {
   const { data: session, status } = useSession()
-  const role = (session?.user as { role?: string } | undefined)?.role
+  const role      = (session?.user as { role?: string }      | undefined)?.role
   const firstName = (session?.user as { firstName?: string } | undefined)?.firstName
-  const greeting = firstName || session?.user?.name?.split(' ')[0] || ''
+  const lastName  = (session?.user as { lastName?: string }  | undefined)?.lastName
+  const fullName  = [firstName, lastName].filter(Boolean).join(' ').trim()
+  const greeting  = fullName || session?.user?.name || session?.user?.email?.split('@')[0] || ''
 
   return (
     <div className="flex shrink-0 items-center gap-2">
