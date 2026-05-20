@@ -60,7 +60,16 @@ DATABASE_URL="$_DB_URL" npx prisma migrate deploy 2>&1 | tail -5 || \
   echo "  ⚠ Migration step returned non-zero (may be non-fatal if already applied)"
 set -o pipefail
 
-# ── 5. Backup current build for rollback ──────────────────────────────────────
+# ── 5. Source .env into shell (needed by pm2 --update-env later) ──────────────
+# Exports every variable in .env so that pm2 --update-env captures real values
+# (including GOOGLE_CLIENT_ID/SECRET) rather than empty CI shell defaults.
+echo "→ Sourcing .env for pm2 env refresh..."
+set -a
+# shellcheck disable=SC1091
+source "$APP_DIR/.env" 2>/dev/null || true
+set +a
+
+# ── 6a. Backup current build for rollback ─────────────────────────────────────
 echo "→ Backing up current build..."
 if [ -d .next ]; then
   rm -rf .next.bak 2>/dev/null || true
@@ -70,7 +79,7 @@ else
   echo "  ⚠ No existing .next build to back up"
 fi
 
-# ── 6. Build Next.js ──────────────────────────────────────────────────────────
+# ── 6b. Build Next.js ─────────────────────────────────────────────────────────
 echo "→ Building Next.js..."
 if ! npm run build; then
   echo "✗ Build FAILED"
@@ -115,7 +124,8 @@ JSONEOF
 echo "→ Deploy info: $COMMIT_SHORT @ $DEPLOYED_AT"
 
 # ── 8. Hard restart (prevents Server Action stale-worker ID mismatch) ─────────
-echo "→ Restarting PM2 (hard restart + env refresh)..."
+# .env already sourced in step 5 — pm2 --update-env picks up all vars
+echo "→ Restarting PM2 (hard restart + env refresh from .env)..."
 pm2 restart "$APP_NAME" --update-env
 
 # ── 9. Health check with rollback ─────────────────────────────────────────────
