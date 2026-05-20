@@ -3,6 +3,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 
 import { prisma }           from '@/lib/prisma'
 import { withApiMetrics }   from '@/lib/apiMetrics'
+import { cachedOr }         from '@/lib/redisCache'
+
+const STATS_CACHE_KEY = 'admin:stats'
+const STATS_CACHE_TTL = 30  // 30-second cache — sidebar polls every 30s
 
 async function handleGET(req: NextRequest) {
   const token = await getToken({ req })
@@ -10,6 +14,18 @@ async function handleGET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Bypass cache if ?fresh=1 (for manual refresh triggers)
+  const fresh = new URL(req.url).searchParams.get('fresh') === '1'
+  if (!fresh) {
+    const cached = await cachedOr(STATS_CACHE_KEY, STATS_CACHE_TTL, computeStats)
+    return NextResponse.json(cached)
+  }
+
+  const stats = await computeStats()
+  return NextResponse.json(stats)
+}
+
+async function computeStats() {
   const now              = new Date()
   const tenMinutesAgo    = new Date(now.getTime() -  10 * 60 * 1000)
   const oneHourAgo       = new Date(now.getTime() -  60 * 60 * 1000)
@@ -58,7 +74,7 @@ async function handleGET(req: NextRequest) {
     systemStatus = 'yellow'
   }
 
-  return NextResponse.json({
+  return {
     totalUsers,
     newUsers24h,
     suspendedCount,
@@ -74,7 +90,7 @@ async function handleGET(req: NextRequest) {
     newRestaurants24h,
     systemStatus,
     timestamp: now.toISOString(),
-  })
+  }
 }
 
 export const GET = withApiMetrics('/api/admin/stats', handleGET)

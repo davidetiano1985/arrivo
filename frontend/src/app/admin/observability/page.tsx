@@ -34,27 +34,59 @@ export default async function ObservabilityPage() {
     : -1
   const dbStatus = dbLatencyAvg < 0 ? 'error' : dbLatencyAvg > 200 ? 'slow' : 'ok'
 
-  // ── ApiMetric data (if table has any rows) ──────────────────────────────────
-  const [apiMetricCount, topSlowRoutes, apiMetricsByRoute] = await Promise.all([
+  // ── ApiMetric data — real p50/p95/p99 via PostgreSQL percentile_cont ────────
+  type PercentileRow = { route: string; method: string; count: bigint; avg_ms: number; p50: number; p95: number; p99: number; max_ms: number }
+  type GlobalPercRow = { p50: number; p95: number; p99: number; avg_ms: number }
+
+  const [apiMetricCount, apiPercentilesByRoute, apiGlobalPercentiles] = await Promise.all([
     prisma.apiMetric.count(),
-    // Slowest routes (p95 approximation — top 5% by latency)
-    prisma.apiMetric.findMany({
-      where:   { createdAt: { gte: t24h } },
-      orderBy: { latencyMs: 'desc' },
-      take:    20,
-      select:  { route: true, latencyMs: true, status: true, method: true, createdAt: true },
-    }),
-    // Aggregate by route
-    prisma.apiMetric.groupBy({
-      by:     ['route', 'method'],
-      where:  { createdAt: { gte: t24h } },
-      _avg:   { latencyMs: true },
-      _max:   { latencyMs: true },
-      _count: { id: true },
-      orderBy: { _count: { id: 'desc' } },
-      take:   15,
-    }),
+    // Real per-route percentiles
+    prisma.$queryRaw<PercentileRow[]>`
+      SELECT
+        route,
+        method,
+        COUNT(*) AS count,
+        ROUND(AVG("latencyMs"))::int                                                 AS avg_ms,
+        ROUND(percentile_cont(0.50) WITHIN GROUP (ORDER BY "latencyMs"))::int        AS p50,
+        ROUND(percentile_cont(0.95) WITHIN GROUP (ORDER BY "latencyMs"))::int        AS p95,
+        ROUND(percentile_cont(0.99) WITHIN GROUP (ORDER BY "latencyMs"))::int        AS p99,
+        MAX("latencyMs")                                                              AS max_ms
+      FROM "ApiMetric"
+      WHERE "createdAt" > NOW() - INTERVAL '24 hours'
+      GROUP BY route, method
+      ORDER BY count DESC
+      LIMIT 15
+    `,
+    // Global percentiles (all routes, last 1h)
+    prisma.$queryRaw<GlobalPercRow[]>`
+      SELECT
+        ROUND(percentile_cont(0.50) WITHIN GROUP (ORDER BY "latencyMs"))::int AS p50,
+        ROUND(percentile_cont(0.95) WITHIN GROUP (ORDER BY "latencyMs"))::int AS p95,
+        ROUND(percentile_cont(0.99) WITHIN GROUP (ORDER BY "latencyMs"))::int AS p99,
+        ROUND(AVG("latencyMs"))::int                                           AS avg_ms
+      FROM "ApiMetric"
+      WHERE "createdAt" > NOW() - INTERVAL '1 hour'
+    `,
   ])
+
+  const globalPerc = apiGlobalPercentiles?.[0] ?? { p50: 0, p95: 0, p99: 0, avg_ms: 0 }
+
+  // Keep topSlowRoutes for backward-compat with existing JSX sections
+  const topSlowRoutes = (apiPercentilesByRoute ?? [])
+    .sort((a, b) => (Number(b.p95) || 0) - (Number(a.p95) || 0))
+    .slice(0, 10)
+    .map((r) => ({ route: r.route, latencyMs: Number(r.p95), status: 200, method: r.method, createdAt: new Date() }))
+
+  const apiMetricsByRoute = (apiPercentilesByRoute ?? []).map((r) => ({
+    route:   r.route,
+    method:  r.method,
+    _avg:    { latencyMs: Number(r.avg_ms) || 0 },
+    _max:    { latencyMs: Number(r.max_ms) || 0 },
+    _count:  { id: Number(r.count) || 0 },
+    p50:     Number(r.p50) || 0,
+    p95:     Number(r.p95) || 0,
+    p99:     Number(r.p99) || 0,
+  }))
 
   // ── Login event patterns (traffic proxy) ────────────────────────────────────
   const [
@@ -224,6 +256,25 @@ export default async function ObservabilityPage() {
               )}
             </p>
             <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03]">
+              {/* Global percentiles row */}
+              {apiMetricCount > 0 && (
+                <div className="grid grid-cols-4 divide-x divide-white/[0.07] border-b border-white/[0.07]">
+                  {[
+                    { label: 'p50 (1h)', value: globalPerc.p50 },
+                    { label: 'p95 (1h)', value: globalPerc.p95 },
+                    { label: 'p99 (1h)', value: globalPerc.p99 },
+                    { label: 'avg (1h)', value: globalPerc.avg_ms },
+                  ].map((m) => (
+                    <div key={m.label} className="p-3 text-center">
+                      <p className="text-[9px] font-black uppercase text-white/25">{m.label}</p>
+                      <p className={`mt-1 text-lg font-black ${
+                        m.value > 1000 ? 'text-red-400' : m.value > 500 ? 'text-amber-400' : 'text-emerald-400'
+                      }`}>{m.value}ms</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {apiMetricsByRoute.length === 0 ? (
                 <div className="p-5">
                   <p className="text-xs font-bold text-white/30 mb-3">
@@ -231,40 +282,38 @@ export default async function ObservabilityPage() {
                   </p>
                   <pre className="rounded-xl bg-white/[0.05] p-3 text-[10px] font-mono text-white/50 overflow-x-auto">
 {`import { withApiMetrics } from '@/lib/apiMetrics'
-
-export const GET = withApiMetrics(
-  '/api/admin/stats',
-  async (req) => { /* handler */ }
-)`}
+export const GET = withApiMetrics('/api/admin/stats', handler)`}
                   </pre>
                 </div>
               ) : (
                 <table className="w-full border-collapse text-xs">
                   <thead className="bg-white/5">
                     <tr>
-                      {['Route', 'Calls', 'Avg', 'P95'].map((h) => (
-                        <th key={h} className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">{h}</th>
+                      {['Route', 'Calls', 'Avg', 'p50', 'p95', 'p99'].map((h) => (
+                        <th key={h} className="px-3 py-2.5 text-left text-[10px] font-black uppercase text-white/30">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {apiMetricsByRoute.map((r, i) => (
                       <tr key={i} className="border-t border-white/[0.05]">
-                        <td className="px-4 py-2.5 font-mono text-white/70 truncate max-w-[160px]">
+                        <td className="px-3 py-2.5 font-mono text-white/70 truncate max-w-[130px]">
                           {r.route}
                         </td>
-                        <td className="px-4 py-2.5 font-black text-white">{r._count.id}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-2.5 font-black text-white">{r._count.id}</td>
+                        <td className="px-3 py-2.5">
                           <span className={`font-black ${
-                            (r._avg.latencyMs ?? 0) > 500 ? 'text-red-400' :
-                            (r._avg.latencyMs ?? 0) > 200 ? 'text-amber-400' : 'text-emerald-400'
-                          }`}>
-                            {Math.round(r._avg.latencyMs ?? 0)}ms
-                          </span>
+                            r._avg.latencyMs > 500 ? 'text-red-400' :
+                            r._avg.latencyMs > 200 ? 'text-amber-400' : 'text-emerald-400'
+                          }`}>{Math.round(r._avg.latencyMs)}ms</span>
                         </td>
-                        <td className="px-4 py-2.5 font-black text-white/50">
-                          {r._max.latencyMs}ms
+                        <td className="px-3 py-2.5 font-black text-white/50">{r.p50}ms</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`font-black ${
+                            r.p95 > 1000 ? 'text-red-400' : r.p95 > 500 ? 'text-amber-400' : 'text-white/50'
+                          }`}>{r.p95}ms</span>
                         </td>
+                        <td className="px-3 py-2.5 font-black text-red-400/70">{r.p99}ms</td>
                       </tr>
                     ))}
                   </tbody>

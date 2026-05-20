@@ -2,8 +2,9 @@ import { getServerSession } from 'next-auth'
 import { redirect }         from 'next/navigation'
 import Link                 from 'next/link'
 
-import { authOptions } from '@/lib/auth'
-import { prisma }      from '@/lib/prisma'
+import { authOptions }                      from '@/lib/auth'
+import { prisma }                           from '@/lib/prisma'
+import { getTopRiskyIPs, isIPBlocked }      from '@/lib/securityIntelligence'
 
 function fmt(d: Date) {
   return d.toLocaleString('it-IT', {
@@ -38,6 +39,7 @@ export default async function SicurezzaPage() {
     bruteUsers,
     // Top failure IPs (last 24h)
     foreignIPEvents,
+    redisTopIPs,
   ] = await Promise.all([
     prisma.loginEvent.count({ where: { success: false, createdAt: { gte: tenMinutesAgo } } }),
     prisma.loginEvent.count({ where: { success: false, createdAt: { gte: oneHourAgo    } } }),
@@ -80,7 +82,7 @@ export default async function SicurezzaPage() {
       orderBy: { loginAttempts: 'desc' },
       take: 10,
     }),
-    // Foreign IP events (rough detection: not starting with Italian prefixes)
+    // All failed-login IPs in last 24h (for frequency map)
     prisma.loginEvent.findMany({
       where: {
         success:   false,
@@ -89,6 +91,8 @@ export default async function SicurezzaPage() {
       },
       select: { ipAddress: true },
     }),
+    // Redis IP reputation data
+    getTopRiskyIPs(20),
   ])
 
   // Count IP frequencies
@@ -245,36 +249,64 @@ export default async function SicurezzaPage() {
         {/* Two-column: Top IPs + Suspended */}
         <div className="grid gap-6 lg:grid-cols-2">
 
-          {/* Top IPs */}
+          {/* IP Reputation (Redis-powered) */}
           <section>
             <p className="mb-3 text-xs font-black uppercase tracking-widest text-white/40">
-              IP con più fallimenti (24h)
+              IP Reputation Score — Redis sliding window (1h)
             </p>
             <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03]">
-              {topIPs.length === 0 ? (
-                <p className="px-5 py-6 text-xs font-bold text-white/25">Nessun fallimento nelle ultime 24h.</p>
+              {redisTopIPs.length === 0 ? (
+                <p className="px-5 py-6 text-xs font-bold text-white/25">
+                  Nessun IP tracciato. I dati appaiono dopo i primi tentativi falliti.
+                </p>
               ) : (
                 <table className="w-full border-collapse text-sm">
                   <thead className="bg-white/5">
                     <tr>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">#</th>
                       <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">IP Address</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Tentativi</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Fail/1h</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Risk Score</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase text-white/30">Stato</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {topIPs.map(([ip, count], i) => (
-                      <tr key={ip} className="border-t border-white/[0.05]">
-                        <td className="px-4 py-2.5 text-xs font-black text-white/30">{i + 1}</td>
-                        <td className="px-4 py-2.5 font-mono text-sm text-white/70">{ip}</td>
+                    {redisTopIPs.map((entry) => (
+                      <tr key={entry.ip} className="border-t border-white/[0.05]">
+                        <td className="px-4 py-2.5 font-mono text-sm text-white/70">{entry.ip}</td>
                         <td className="px-4 py-2.5">
                           <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${
-                            count >= 10 ? 'bg-red-500/20 text-red-400'
-                            : count >= 5 ? 'bg-amber-400/20 text-amber-400'
+                            entry.failCount >= 20 ? 'bg-red-500/20 text-red-400'
+                            : entry.failCount >= 10 ? 'bg-amber-400/20 text-amber-400'
                             : 'bg-white/10 text-white/50'
-                          }`}>
-                            {count}
-                          </span>
+                          }`}>{entry.failCount}</span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-16 rounded-full bg-white/10 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  entry.score >= 80 ? 'bg-red-500' :
+                                  entry.score >= 50 ? 'bg-amber-400' : 'bg-emerald-500'
+                                }`}
+                                style={{ width: `${entry.score}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs font-black ${
+                              entry.score >= 80 ? 'text-red-400' :
+                              entry.score >= 50 ? 'text-amber-400' : 'text-white/50'
+                            }`}>{entry.score}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {entry.blocked ? (
+                            <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-black text-red-400">
+                              🔒 BLOCCATO
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-black text-white/30">
+                              monitorato
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

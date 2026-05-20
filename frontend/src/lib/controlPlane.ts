@@ -5,7 +5,8 @@
  *   - /api/admin/stream    (SSE heartbeat every 15s)
  */
 
-import { prisma } from './prisma'
+import { prisma }       from './prisma'
+import { redisPub }     from './redis'
 
 export type ControlPlaneSnapshot = {
   ts: string
@@ -28,6 +29,10 @@ export type ControlPlaneSnapshot = {
   // Card 4 — DB Health
   dbLatency: number
   dbStatus:  'ok' | 'slow' | 'error'
+
+  // Card 4b — Redis Health
+  redisLatency: number
+  redisStatus:  'ok' | 'slow' | 'error'
 
   // Card 5 — Error Stream
   errorRate24h:    number
@@ -57,6 +62,14 @@ export type ControlPlaneSnapshot = {
   // Card 9 — Degradation Risk Score
   degradationScore: number   // 0–100
   riskFactors:      string[]
+
+  // Extra — API Latency percentiles (last 1h)
+  apiP50:  number
+  apiP95:  number
+  apiP99:  number
+
+  // Extra — Security intel
+  blockedIPs: number
 }
 
 export async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot> {
@@ -79,6 +92,19 @@ export async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot>
     dbLatency = -1
   }
 
+  // ── Redis latency probe ──────────────────────────────────────────────────────
+  const tR = performance.now()
+  let redisStatus:  'ok' | 'slow' | 'error' = 'ok'
+  let redisLatency = 0
+  try {
+    await redisPub.ping()
+    redisLatency = Math.round(performance.now() - tR)
+    if (redisLatency > 50) redisStatus = 'slow'
+  } catch {
+    redisStatus  = 'error'
+    redisLatency = -1
+  }
+
   // ── Parallel DB queries ─────────────────────────────────────────────────────
   const [
     activeUsersResult,
@@ -94,6 +120,8 @@ export async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot>
     alertsMedium,
     oldestAlert,
     recentAdminActions,
+    apiLatencyRows,
+    trackedIPsCount,
   ] = await Promise.all([
     // Distinct users with at least one successful login in last 15 min
     prisma.loginEvent.groupBy({
@@ -121,6 +149,17 @@ export async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot>
       take:    6,
       select:  { action: true, adminEmail: true, targetEmail: true, createdAt: true },
     }),
+    // p50/p95/p99 API latency (last 1h) via PostgreSQL percentile_cont
+    prisma.$queryRaw<Array<{ p50: number; p95: number; p99: number }>>`
+      SELECT
+        ROUND(percentile_cont(0.50) WITHIN GROUP (ORDER BY "latencyMs"))::int AS p50,
+        ROUND(percentile_cont(0.95) WITHIN GROUP (ORDER BY "latencyMs"))::int AS p95,
+        ROUND(percentile_cont(0.99) WITHIN GROUP (ORDER BY "latencyMs"))::int AS p99
+      FROM "ApiMetric"
+      WHERE "createdAt" > NOW() - INTERVAL '1 hour'
+    `,
+    // Blocked IPs count from Redis
+    redisPub.zcard('sec:topips').catch(() => 0),
   ])
 
   const activeUsers15m = activeUsersResult.length
@@ -162,6 +201,14 @@ export async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot>
     healthScore >= 70 ? 'green' :
     healthScore >= 40 ? 'yellow' : 'red'
 
+  // API latency percentiles
+  const apiLatRow = apiLatencyRows?.[0]
+  const apiP50 = apiLatRow?.p50 ?? 0
+  const apiP95 = apiLatRow?.p95 ?? 0
+  const apiP99 = apiLatRow?.p99 ?? 0
+
+  const blockedIPs = trackedIPsCount ?? 0
+
   // Degradation risk (0–100)
   const riskFactors: string[] = []
   if (failedLogins10m > 5)  riskFactors.push(`${failedLogins10m} login falliti/10min`)
@@ -170,7 +217,10 @@ export async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot>
   if (memPercent     > 75)  riskFactors.push(`Heap memory: ${memPercent}%`)
   if (errorRate24h   > 30)  riskFactors.push(`Error rate: ${errorRate24h}%`)
   if (alertsCritical > 0)   riskFactors.push(`${alertsCritical} alert critici aperti`)
-  if (dbStatus === 'error') riskFactors.push('Database non raggiungibile')
+  if (dbStatus    === 'error') riskFactors.push('Database non raggiungibile')
+  if (redisStatus === 'error') riskFactors.push('Redis non raggiungibile')
+  if (apiP95      > 1000)      riskFactors.push(`API p95: ${apiP95}ms`)
+  if (blockedIPs  > 0)         riskFactors.push(`${blockedIPs} IP monitorati/bloccati`)
 
   const degradationScore = Math.min(100, Math.round(
     (attackScore          * 0.40) +
@@ -214,5 +264,11 @@ export async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot>
     uptimeSec,
     degradationScore,
     riskFactors,
+    redisLatency,
+    redisStatus,
+    apiP50,
+    apiP95,
+    apiP99,
+    blockedIPs,
   }
 }

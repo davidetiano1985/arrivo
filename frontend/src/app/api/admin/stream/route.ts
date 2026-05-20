@@ -66,8 +66,21 @@ export async function GET(req: NextRequest) {
         if (!closed) heartbeatTimer = setTimeout(heartbeat, 15_000)
       }
 
+      // ── Event deduplication (Redis pub/sub can cause brief cross-instance
+      //    duplicates — drop events with same type+ts seen within 2s) ─────────
+      const recentHashes = new Map<string, number>()
+      function dedup(ev: Record<string, unknown>): boolean {
+        const hash = `${String(ev.type)}:${String(ev.ts)}`
+        const now  = Date.now()
+        recentHashes.forEach((t, k) => { if (now - t > 2000) recentHashes.delete(k) })
+        if (recentHashes.has(hash)) return true
+        recentHashes.set(hash, now)
+        return false
+      }
+
       // ── Live event relay ───────────────────────────────────────────────────
       function onLive(ev: unknown) {
+        if (dedup(ev as Record<string, unknown>)) return
         send({ type: 'event', data: ev })
       }
       adminEmitter.on('live', onLive)

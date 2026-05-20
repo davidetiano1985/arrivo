@@ -4,8 +4,9 @@ import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 
-import { prisma }     from './prisma'
-import { emitEvent }  from './eventBus'
+import { prisma }                              from './prisma'
+import { emitEvent }                          from './eventBus'
+import { trackIPFailedLogin, isIPBlocked }    from './securityIntelligence'
 
 // ── How long a JWT stays valid ────────────────────────────────────────────────
 // Previously missing → NextAuth defaulted to 30 days (!)
@@ -49,6 +50,18 @@ export const authOptions: NextAuthOptions = {
         const ip = (req?.headers?.['x-real-ip'] as string | undefined)
           ?? (req?.headers?.['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim()
           ?? '127.0.0.1'
+
+        // ── IP block check — fail fast before any DB query ────────────────────
+        const blocked = await isIPBlocked(ip)
+        if (blocked) {
+          emitEvent({
+            type:      'security_alert',
+            category:  'security',
+            ipAddress: ip,
+            data:      { reason: 'ip_blocked_attempt', email: credentials.email },
+          })
+          return null
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
@@ -98,6 +111,10 @@ export const authOptions: NextAuthOptions = {
             ipAddress: ip,
             data:      { attempts: newAttempts },
           })
+
+          // Track in Redis sliding window — may auto-block the IP
+          trackIPFailedLogin(ip, user.email).catch(() => {})
+
           return null
         }
 

@@ -29,6 +29,8 @@ export type EventType =
   | 'api_slow'
   | 'db_slow'
   | 'db_error'
+  | 'ip_blocked'
+  | 'session_risk_high'
 
 export type EventCategory = 'security' | 'performance' | 'user' | 'system' | 'admin'
 
@@ -36,16 +38,18 @@ export type EventCategory = 'security' | 'performance' | 'user' | 'system' | 'ad
 // Dynamic boosting happens in emitEvent based on context.
 
 const SEVERITY: Record<EventType, number> = {
-  login_success:  5,
-  login_fail:     30,
-  brute_force:    85,
-  admin_action:   35,
-  user_suspended: 60,
-  force_logout:   55,
-  security_alert: 75,
-  api_slow:       40,
-  db_slow:        55,
-  db_error:       90,
+  login_success:     5,
+  login_fail:        30,
+  brute_force:       85,
+  admin_action:      35,
+  user_suspended:    60,
+  force_logout:      55,
+  security_alert:    75,
+  api_slow:          40,
+  db_slow:           55,
+  db_error:          90,
+  ip_blocked:        80,
+  session_risk_high: 70,
 }
 
 // ── Emit ──────────────────────────────────────────────────────────────────────
@@ -57,6 +61,7 @@ export type EmitPayload = {
   userEmail?: string
   ipAddress?: string
   route?:     string
+  requestId?: string  // end-to-end request tracing
   data?:      Record<string, unknown>
 }
 
@@ -101,6 +106,7 @@ export function emitEvent(payload: EmitPayload): void {
       userEmail: payload.userEmail,
       ipAddress: payload.ipAddress,
       route:     payload.route,
+      requestId: payload.requestId,
       data:      (payload.data ?? {}) as unknown as Prisma.InputJsonValue,
     },
   }).catch(() => { /* intentionally silent */ })
