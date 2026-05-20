@@ -82,14 +82,35 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 2. Auth protection for private areas (/admin, /ristorante)
+  // 2. Auth protection for private areas
   const token = await getToken({ req: request })
   const baseUrl = process.env.NEXTAUTH_URL || 'https://arrivoapp.it'
 
-  if (!token) {
+  if (!token || token.invalid) {
     return NextResponse.redirect(new URL('/login', baseUrl))
   }
 
+  // 3. Profile-completion enforcement ────────────────────────────────────────
+  // Users whose JWT carries profileIncomplete=true (e.g. new Google signup
+  // without given_name/family_name) must finish their profile before using
+  // any protected route.
+  // Exemptions:
+  //   • /completa-profilo  — the completion page itself
+  //   • super_admin        — legacy admin accounts may lack names; never block
+  if (
+    token.profileIncomplete === true &&
+    token.role !== 'super_admin' &&
+    pathname !== '/completa-profilo'
+  ) {
+    return NextResponse.redirect(new URL('/completa-profilo', baseUrl))
+  }
+
+  // 4. Users with a complete profile landing on /completa-profilo → home
+  if (pathname === '/completa-profilo' && token.profileIncomplete !== true) {
+    return NextResponse.redirect(new URL('/', baseUrl))
+  }
+
+  // 5. Role-based access ─────────────────────────────────────────────────────
   if (pathname.startsWith('/admin') && token.role !== 'super_admin') {
     return NextResponse.redirect(new URL('/', baseUrl))
   }
@@ -109,6 +130,8 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/ristorante/:path*',
+    '/profilo',
+    '/completa-profilo',
     '/api/auth/callback/credentials',
     '/api/auth/verify',
     '/registrati',
