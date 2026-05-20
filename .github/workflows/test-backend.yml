@@ -77,17 +77,23 @@ jobs:
       - name: FastAPI startup check
         working-directory: backend
         run: |
-          # Capture uvicorn output so we can debug failures
-          python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 \
+          # Diagnostics first
+          echo "Python: $(python --version)"
+          echo "uvicorn: $(python -m uvicorn --version 2>&1 || echo 'NOT FOUND')"
+          python -c "import uvicorn; print('uvicorn import OK')" || echo "uvicorn import FAILED"
+          python -c "from app.main import app; print('app import OK')" || echo "app import FAILED"
+          # Launch with --loop asyncio to avoid uvloop C-extension issues
+          python -m uvicorn app.main:app \
+            --host 127.0.0.1 --port 8001 \
+            --loop asyncio --no-access-log \
             > /tmp/uvicorn.log 2>&1 &
           SERVER_PID=$!
-          # Wait up to 15s for startup (watch for "Application startup complete")
           STATUS="000"
           for i in $(seq 1 15); do
             sleep 1
             STATUS=$(curl -sf -o /dev/null -w '%{http_code}' \
               http://127.0.0.1:8001/api/v1/ 2>/dev/null || echo "000")
-            echo "  Attempt $i/15 — HTTP $STATUS"
+            echo "  Attempt $i/15 — HTTP $STATUS — pid running: $(kill -0 $SERVER_PID 2>/dev/null && echo yes || echo no)"
             [[ "$STATUS" =~ ^(200|404|422)$ ]] && break
           done
           echo "=== uvicorn log ==="
