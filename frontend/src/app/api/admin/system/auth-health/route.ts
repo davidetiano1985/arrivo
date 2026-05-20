@@ -1,5 +1,6 @@
-import { getToken }                from 'next-auth/jwt'
 import { type NextRequest, NextResponse } from 'next/server'
+
+import { requireSuperAdmin } from '@/lib/admin-auth'
 
 /**
  * GET /api/admin/system/auth-health
@@ -16,10 +17,8 @@ import { type NextRequest, NextResponse } from 'next/server'
  * }
  */
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req })
-  if (!token || (token.role as string) !== 'super_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin(req)
+  if (!auth.ok) return auth.response
 
   const googleProvider = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
   const nextAuthUrl    = !!process.env.NEXTAUTH_URL

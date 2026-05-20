@@ -9,12 +9,12 @@
  *             PM2 single-process mode: EventEmitter works perfectly.
  */
 
-import { getToken }    from 'next-auth/jwt'
 import { NextRequest } from 'next/server'
 
 import { adminEmitter }               from '@/lib/eventEmitter'
 import { fetchControlPlaneSnapshot }  from '@/lib/controlPlane'
 import { initRedisBridge }            from '@/lib/redisBridge'
+import { requireSuperAdmin }          from '@/lib/admin-auth'
 
 // Initialize Redis→EventEmitter bridge once per process startup.
 // Safe to call multiple times — guarded by global.__redisBridgeInit.
@@ -25,13 +25,8 @@ export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   // ── Auth ─────────────────────────────────────────────────────────────────────
-  const token = await getToken({ req })
-  if (!token || (token.role as string) !== 'super_admin') {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  const auth = await requireSuperAdmin(req)
+  if (!auth.ok) return auth.response
 
   const encoder = new TextEncoder()
 

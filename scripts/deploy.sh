@@ -71,6 +71,9 @@ set -a
 source "$APP_DIR/.env" 2>/dev/null || true
 set +a
 
+# NODE_ENV must always be "production" in a deploy — force it regardless of .env
+export NODE_ENV=production
+
 # ── 5b. Validate required env vars ────────────────────────────────────────────
 # Runs AFTER source .env so all variables are available.
 # Exits 1 and aborts the deploy if any required var is missing or empty.

@@ -9,10 +9,10 @@
  *     -H "x-cleanup-secret: $CLEANUP_SECRET" >> /var/log/arrivo-cleanup.log 2>&1
  */
 
-import { getToken }                   from 'next-auth/jwt'
 import { type NextRequest, NextResponse } from 'next/server'
 
 import { runRetentionCleanup } from '@/lib/cleanup'
+import { requireSuperAdmin }   from '@/lib/admin-auth'
 
 const CLEANUP_SECRET = process.env.CLEANUP_SECRET
 
@@ -22,10 +22,8 @@ export async function POST(req: NextRequest) {
   const isSecretAuth = CLEANUP_SECRET && secretHeader === CLEANUP_SECRET
 
   if (!isSecretAuth) {
-    const token = await getToken({ req })
-    if (!token || (token.role as string) !== 'super_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireSuperAdmin(req)
+    if (!auth.ok) return auth.response
   }
 
   try {

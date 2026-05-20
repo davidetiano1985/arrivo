@@ -1,18 +1,16 @@
-import { getToken } from 'next-auth/jwt'
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { prisma }           from '@/lib/prisma'
-import { withApiMetrics }   from '@/lib/apiMetrics'
-import { cachedOr }         from '@/lib/redisCache'
+import { prisma }            from '@/lib/prisma'
+import { withApiMetrics }    from '@/lib/apiMetrics'
+import { cachedOr }          from '@/lib/redisCache'
+import { requireSuperAdmin } from '@/lib/admin-auth'
 
 const STATS_CACHE_KEY = 'admin:stats'
 const STATS_CACHE_TTL = 30  // 30-second cache — sidebar polls every 30s
 
 async function handleGET(req: NextRequest) {
-  const token = await getToken({ req })
-  if (!token || (token.role as string) !== 'super_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin(req)
+  if (!auth.ok) return auth.response
 
   // Bypass cache if ?fresh=1 (for manual refresh triggers)
   const fresh = new URL(req.url).searchParams.get('fresh') === '1'

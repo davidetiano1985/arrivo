@@ -1,7 +1,7 @@
-import { getToken } from 'next-auth/jwt'
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { prisma } from '@/lib/prisma'
+import { prisma }            from '@/lib/prisma'
+import { requireSuperAdmin } from '@/lib/admin-auth'
 
 // ── Computed alert types ──────────────────────────────────────────────────────
 
@@ -114,10 +114,8 @@ async function buildComputedAlerts(): Promise<ComputedAlert[]> {
 // ── GET ──────────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req })
-  if (!token || (token.role as string) !== 'super_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin(req)
+  if (!auth.ok) return auth.response
 
   const [stored, computed] = await Promise.all([
     prisma.systemAlert.findMany({
@@ -133,10 +131,9 @@ export async function GET(req: NextRequest) {
 // ── POST — resolve alert ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req })
-  if (!token || (token.role as string) !== 'super_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin(req)
+  if (!auth.ok) return auth.response
+  const token = auth.token
 
   const body = await req.json().catch(() => ({}))
 

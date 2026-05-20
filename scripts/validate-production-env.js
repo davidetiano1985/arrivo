@@ -12,6 +12,7 @@
 
 // ── Variabili obbligatorie — deploy bloccato se mancano ─────────────────────
 const REQUIRED = [
+  'NODE_ENV',          // deve essere esattamente "production" in produzione
   'DATABASE_URL',
   'NEXTAUTH_URL',
   'NEXTAUTH_SECRET',
@@ -59,6 +60,23 @@ console.log('  Variabili OBBLIGATORIE:')
 
 for (const key of REQUIRED) {
   const val = process.env[key]
+
+  // NODE_ENV ha una regola speciale: deve essere esattamente "production"
+  if (key === 'NODE_ENV') {
+    if (val === 'production') {
+      process.stdout.write(`  ✓  ${key.padEnd(26)} OK (production)\n`)
+    } else if (!isPresent(val)) {
+      process.stderr.write(`  ✗  ${key.padEnd(26)} MANCANTE O VUOTA  ← ERRORE\n`)
+      missing.push(key)
+      failed = true
+    } else {
+      process.stderr.write(`  ✗  ${key.padEnd(26)} = "${val}" (deve essere "production")  ← ERRORE\n`)
+      missing.push(`${key}="production"`)
+      failed = true
+    }
+    continue
+  }
+
   if (isPresent(val)) {
     process.stdout.write(`  ✓  ${key.padEnd(26)} ${mask(val)}\n`)
   } else {

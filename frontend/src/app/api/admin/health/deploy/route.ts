@@ -11,13 +11,13 @@
  *   - Node.js process uptime + memory
  */
 
-import { getToken }    from 'next-auth/jwt'
 import { NextRequest } from 'next/server'
 import fs              from 'fs'
 import path            from 'path'
 
-import { prisma }    from '@/lib/prisma'
-import { redisPub }  from '@/lib/redis'
+import { prisma }            from '@/lib/prisma'
+import { redisPub }          from '@/lib/redis'
+import { requireSuperAdmin } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -34,10 +34,8 @@ type DeployInfo = {
 
 export async function GET(req: NextRequest) {
   // ── Auth ───────────────────────────────────────────────────────────────────
-  const token = await getToken({ req })
-  if (!token || (token.role as string) !== 'super_admin') {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin(req)
+  if (!auth.ok) return auth.response
 
   // ── Read deploy info file ─────────────────────────────────────────────────
   let deploy: DeployInfo | null = null

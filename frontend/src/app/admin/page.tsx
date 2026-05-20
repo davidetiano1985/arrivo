@@ -7,7 +7,7 @@ import AdminControlRoom from '@/components/admin/AdminControlRoom'
 
 export default async function AdminDashboardPage() {
   const session = await getServerSession(authOptions)
-  if (!session) return null
+  if (!session || (session.user as { role?: string })?.role !== 'super_admin') return null
 
   const firstName = (session.user as { firstName?: string })?.firstName
   const name = firstName || session.user?.name?.split(' ')[0] || 'Admin'

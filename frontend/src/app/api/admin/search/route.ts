@@ -1,13 +1,11 @@
-import { getToken } from 'next-auth/jwt'
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { prisma } from '@/lib/prisma'
+import { prisma }            from '@/lib/prisma'
+import { requireSuperAdmin } from '@/lib/admin-auth'
 
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req })
-  if (!token || (token.role as string) !== 'super_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin(req)
+  if (!auth.ok) return auth.response
 
   const url = new URL(req.url)
   const q   = url.searchParams.get('q')?.trim() ?? ''
