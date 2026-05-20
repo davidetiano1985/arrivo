@@ -26,7 +26,7 @@ export default function UsersFilters({
         if (v) sp.set(k, v)
         else sp.delete(k)
       })
-      sp.delete('page')               // reset to page 1 on filter change
+      sp.delete('cursor')              // reset cursor on filter change
       startTransition(() => router.push(`${pathname}?${sp.toString()}`))
     },
     [params, pathname, router],

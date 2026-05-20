@@ -14,6 +14,11 @@ import { NextRequest } from 'next/server'
 
 import { adminEmitter }               from '@/lib/eventEmitter'
 import { fetchControlPlaneSnapshot }  from '@/lib/controlPlane'
+import { initRedisBridge }            from '@/lib/redisBridge'
+
+// Initialize Redis→EventEmitter bridge once per process startup.
+// Safe to call multiple times — guarded by global.__redisBridgeInit.
+initRedisBridge()
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'

@@ -1,9 +1,10 @@
 import { getToken } from 'next-auth/jwt'
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { prisma } from '@/lib/prisma'
+import { prisma }           from '@/lib/prisma'
+import { withApiMetrics }   from '@/lib/apiMetrics'
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const token = await getToken({ req })
   if (!token || (token.role as string) !== 'super_admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -30,3 +31,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ events, timestamp: new Date().toISOString() })
 }
+
+export const GET = withApiMetrics('/api/admin/events', handleGET)

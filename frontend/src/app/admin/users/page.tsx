@@ -39,7 +39,7 @@ export default async function AdminUsersPage({
   searchParams,
 }: {
   searchParams: {
-    page?: string
+    cursor?: string  // numericId (string) of last item in previous page
     perPage?: string
     search?: string
     role?: string
@@ -54,7 +54,8 @@ export default async function AdminUsersPage({
   const sessionRole = (session?.user as { role?: string })?.role
   if (!session || sessionRole !== 'super_admin') redirect('/login')
 
-  const page    = Math.max(1, parseInt(searchParams.page    ?? '1',  10))
+  // Cursor-based pagination: cursor = numericId of last item in previous page
+  const cursorNumericId = searchParams.cursor ? parseInt(searchParams.cursor, 10) : null
   // perPage=0 ("Tutti") removed — OOM risk at scale. Cap at 100.
   const VALID_PER_PAGE = [25, 50, 100]
   const perPage = VALID_PER_PAGE.includes(parseInt(searchParams.perPage ?? '25', 10))
@@ -99,10 +100,16 @@ export default async function AdminUsersPage({
     prisma.user.count({ where: { suspended: true  } }),
   ])
 
-  const users = await prisma.user.findMany({
+  // Cursor pagination: fetch perPage+1 to detect next page.
+  // Uses Prisma cursor on numericId (unique integer, stable for forward-only pagination).
+  // For arbitrary sort fields we add numericId as tiebreaker so cursor is always unambiguous.
+  const rawUsers = await prisma.user.findMany({
     where,
-    orderBy: { [sort]: order },
-    ...(perPage > 0 ? { skip: (page - 1) * perPage, take: perPage } : {}),
+    orderBy: [{ [sort]: order }, { numericId: order }],
+    take: perPage + 1,
+    ...(cursorNumericId
+      ? { cursor: { numericId: cursorNumericId }, skip: 1 }
+      : {}),
     select: {
       id: true, numericId: true, firstName: true, lastName: true,
       email: true, phone: true, role: true, suspended: true,
@@ -110,14 +117,17 @@ export default async function AdminUsersPage({
     },
   })
 
-  const totalPages = perPage > 0 ? Math.ceil(totalFiltered / perPage) : 1
+  const hasNextPage = rawUsers.length > perPage
+  const users       = hasNextPage ? rawUsers.slice(0, perPage) : rawUsers
+  const nextCursor  = hasNextPage ? users[users.length - 1].numericId : null
+  const totalPages  = 1 // kept for display compat; not used for nav
 
   function sortLink(field: SortField) {
     const newOrder = sort === field && order === 'asc' ? 'desc' : 'asc'
     const sp = new URLSearchParams(searchParams as Record<string, string>)
     sp.set('sort', field)
     sp.set('order', newOrder)
-    sp.delete('page')
+    sp.delete('cursor')  // reset pagination when sort changes
     return `/admin/users?${sp.toString()}`
   }
 
@@ -126,9 +136,9 @@ export default async function AdminUsersPage({
     return <span className="ml-1 text-[10px] text-[#ff6b00]">{order === 'asc' ? '↑' : '↓'}</span>
   }
 
-  function pageLink(p: number) {
+  function cursorLink(c: number | null) {
     const sp = new URLSearchParams(searchParams as Record<string, string>)
-    sp.set('page', String(p))
+    if (c) sp.set('cursor', String(c)); else sp.delete('cursor')
     return `/admin/users?${sp.toString()}`
   }
 
@@ -290,50 +300,27 @@ export default async function AdminUsersPage({
             </div>
           </div>
 
-          {/* ── Pagination ── */}
-          {perPage > 0 && totalPages > 1 && (
+          {/* ── Cursor Pagination ── */}
+          {(cursorNumericId || hasNextPage) && (
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-black text-black/45">
-                Pagina {page} di {totalPages} — {totalFiltered} risultati
+                {totalFiltered} risultati
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {page > 1 && (
+              <div className="flex gap-2">
+                {cursorNumericId && (
                   <Link
-                    href={pageLink(page - 1)}
+                    href={cursorLink(null)}
                     className="rounded-xl border border-black/10 px-3 py-1.5 text-xs font-black text-black transition hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]"
                   >
-                    ← Prec
+                    ← Inizio
                   </Link>
                 )}
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                  const p =
-                    totalPages <= 7
-                      ? i + 1
-                      : page <= 4
-                      ? i + 1
-                      : page >= totalPages - 3
-                      ? totalPages - 6 + i
-                      : page - 3 + i
-                  return (
-                    <Link
-                      key={p}
-                      href={pageLink(p)}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${
-                        p === page
-                          ? 'bg-[#ff6b00] text-white'
-                          : 'border border-black/10 text-black hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]'
-                      }`}
-                    >
-                      {p}
-                    </Link>
-                  )
-                })}
-                {page < totalPages && (
+                {hasNextPage && nextCursor && (
                   <Link
-                    href={pageLink(page + 1)}
+                    href={cursorLink(nextCursor)}
                     className="rounded-xl border border-black/10 px-3 py-1.5 text-xs font-black text-black transition hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]"
                   >
-                    Succ →
+                    Successivi {perPage} →
                   </Link>
                 )}
               </div>

@@ -10,10 +10,11 @@
  *   emitEvent({ type: 'login_fail', category: 'security', userEmail, ipAddress })
  */
 
-import { Prisma }             from '@prisma/client'
-import { prisma }             from './prisma'
-import { broadcastLiveEvent } from './eventEmitter'
-import type { LiveEvent }     from './eventEmitter'
+import { Prisma }                    from '@prisma/client'
+import { prisma }                    from './prisma'
+import { broadcastLiveEvent }        from './eventEmitter'
+import type { LiveEvent }            from './eventEmitter'
+import { redisPub, EVENTS_CHANNEL }  from './redis'
 
 // ── Event types ───────────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ export function emitEvent(payload: EmitPayload): void {
 
   const ts = new Date().toISOString()
 
-  // 1. Real-time push to connected SSE clients (synchronous, in-process)
+  // 1. Real-time push — publish to Redis (distributed) + in-process fallback
   const live: LiveEvent = {
     type:      payload.type,
     category:  payload.category,
@@ -82,7 +83,13 @@ export function emitEvent(payload: EmitPayload): void {
     data:      payload.data      ?? null,
     ts,
   }
-  broadcastLiveEvent(live)
+
+  // Publish to Redis → redisBridge re-emits on adminEmitter → SSE clients.
+  // If Redis is unavailable, fall back to direct in-process broadcast.
+  // This is the distributed path: all app processes see the event.
+  redisPub.publish(EVENTS_CHANNEL, JSON.stringify(live)).catch(() => {
+    broadcastLiveEvent(live)
+  })
 
   // 2. Persist to DB — fire-and-forget (no await, no throw)
   prisma.systemEvent.create({

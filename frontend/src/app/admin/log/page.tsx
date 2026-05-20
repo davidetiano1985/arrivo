@@ -31,32 +31,36 @@ function fmt(d: Date) {
 export default async function AdminLogPage({
   searchParams,
 }: {
-  searchParams: { page?: string; action?: string }
+  searchParams: { cursor?: string; action?: string }
 }) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
 
-  const page        = Math.max(1, parseInt(searchParams.page   ?? '1',  10))
-  const perPage     = 50
+  const perPage      = 50
   const actionFilter = searchParams.action ?? ''
+  const cursor       = searchParams.cursor ?? null  // id of last item in previous page
 
   const where = actionFilter ? { action: actionFilter } : {}
 
-  const [total, logs] = await Promise.all([
+  // Fetch perPage + 1 to detect if there's a next page
+  const [total, rawLogs] = await Promise.all([
     prisma.adminLog.count({ where }),
     prisma.adminLog.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
-      skip:  (page - 1) * perPage,
-      take:  perPage,
+      orderBy:  { createdAt: 'desc' },
+      take:     perPage + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     }),
   ])
 
-  const totalPages = Math.ceil(total / perPage)
+  const hasNextPage = rawLogs.length > perPage
+  const logs        = hasNextPage ? rawLogs.slice(0, perPage) : rawLogs
+  const nextCursor  = hasNextPage ? logs[logs.length - 1].id : null
 
-  function pageLink(p: number) {
-    const sp = new URLSearchParams(searchParams as Record<string, string>)
-    sp.set('page', String(p))
+  function cursorLink(c: string | null) {
+    const sp = new URLSearchParams()
+    if (actionFilter) sp.set('action', actionFilter)
+    if (c) sp.set('cursor', c)
     return `/admin/log?${sp.toString()}`
   }
 
@@ -81,9 +85,9 @@ export default async function AdminLogPage({
         {/* Filter by action */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {['', ...Object.keys(ACTION_LABELS)].map((a) => {
-            const sp = new URLSearchParams(searchParams as Record<string, string>)
-            if (a) sp.set('action', a); else sp.delete('action')
-            sp.delete('page')
+            // Reset cursor when changing action filter
+            const sp = new URLSearchParams()
+            if (a) sp.set('action', a)
             const isActive = actionFilter === a
             return (
               <Link
@@ -185,30 +189,28 @@ export default async function AdminLogPage({
             })}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
+          {/* Cursor pagination */}
+          {(cursor || hasNextPage) && (
             <div className="border-t border-black/6 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs font-black text-black/45">
-                  Pagina {page} di {totalPages}
+                  {total} log totali
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {page > 1 && (
-                    <Link href={pageLink(page - 1)} className="rounded-xl border border-black/10 px-3 py-1.5 text-xs font-black text-black transition hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]">
-                      ← Prec
+                <div className="flex gap-2">
+                  {cursor && (
+                    <Link
+                      href={cursorLink(null)}
+                      className="rounded-xl border border-black/10 px-3 py-1.5 text-xs font-black text-black transition hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]"
+                    >
+                      ← Inizio
                     </Link>
                   )}
-                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                    const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i
-                    return (
-                      <Link key={p} href={pageLink(p)} className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${p === page ? 'bg-[#ff6b00] text-white' : 'border border-black/10 text-black hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]'}`}>
-                        {p}
-                      </Link>
-                    )
-                  })}
-                  {page < totalPages && (
-                    <Link href={pageLink(page + 1)} className="rounded-xl border border-black/10 px-3 py-1.5 text-xs font-black text-black transition hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]">
-                      Succ →
+                  {hasNextPage && nextCursor && (
+                    <Link
+                      href={cursorLink(nextCursor)}
+                      className="rounded-xl border border-black/10 px-3 py-1.5 text-xs font-black text-black transition hover:bg-[#ff6b00] hover:text-white hover:border-[#ff6b00]"
+                    >
+                      Successivi →
                     </Link>
                   )}
                 </div>
