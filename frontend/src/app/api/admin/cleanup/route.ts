@@ -11,23 +11,43 @@
 
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { runRetentionCleanup } from '@/lib/cleanup'
-import { requireSuperAdmin }   from '@/lib/admin-auth'
+import { runRetentionCleanup }                                from '@/lib/cleanup'
+import { requireSuperAdmin, logAdminAction, type AdminToken } from '@/lib/admin-auth'
 
 const CLEANUP_SECRET = process.env.CLEANUP_SECRET
+
+// Token sintetico per trigger via cron (nessun JWT disponibile).
+// Cast necessario perché JWT ha campi opzionali non valorizzati — sicuro,
+// logAdminAction accede solo a id/email/role.
+const CRON_TOKEN = {
+  id:    'cron',
+  email: 'cron@system',
+  role:  'super_admin',
+} as unknown as AdminToken
 
 export async function POST(req: NextRequest) {
   // Auth: super_admin session OR shared secret (for cron)
   const secretHeader = req.headers.get('x-cleanup-secret')
   const isSecretAuth = CLEANUP_SECRET && secretHeader === CLEANUP_SECRET
+  let   adminToken   = CRON_TOKEN
 
   if (!isSecretAuth) {
     const auth = await requireSuperAdmin(req)
     if (!auth.ok) return auth.response
+    adminToken = auth.token
   }
 
   try {
     const result = await runRetentionCleanup()
+
+    // Audit log — cleanup è distruttivo, sempre loggare
+    logAdminAction({
+      adminToken,
+      targetEmail: 'system',
+      action:      'admin.cleanup.run',
+      details:     JSON.stringify({ trigger: isSecretAuth ? 'cron' : 'manual', result }),
+    }).catch(() => {})
+
     return NextResponse.json({ ok: true, result })
   } catch (err) {
     console.error('[cleanup route] error:', err)

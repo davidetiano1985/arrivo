@@ -1,7 +1,14 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+
+import { authOptions } from '@/lib/auth'
 import CreateUserForm from './CreateUserForm'
 
-export default function CreateUserPage() {
+export default async function CreateUserPage() {
+  const session = await getServerSession(authOptions)
+  if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
+
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-lg">

@@ -50,6 +50,9 @@ export async function requireSuperAdmin(req: NextRequest): Promise<AuthResult> {
   }
 
   if ((token.role as string) !== 'super_admin') {
+    // Log 403 — utente autenticato ma senza privilegio super_admin.
+    // Non loggare 401 anonimi (spam DB).
+    _logDeniedAccess(token as AdminToken, req.url).catch(() => {})
     return {
       ok: false,
       response: NextResponse.json({ error: 'Accesso negato' }, { status: 403 }),
@@ -77,6 +80,7 @@ export async function requireAdmin(req: NextRequest): Promise<AuthResult> {
 
   const role = token.role as string
   if (role !== 'super_admin' && role !== 'admin') {
+    _logDeniedAccess(token as AdminToken, req.url).catch(() => {})
     return {
       ok: false,
       response: NextResponse.json({ error: 'Accesso negato' }, { status: 403 }),
@@ -97,6 +101,31 @@ export async function getCurrentAdminToken(req: NextRequest): Promise<AdminToken
   const token = await getToken({ req })
   if (!token || token.invalid) return null
   return token as AdminToken
+}
+
+// ── _logDeniedAccess (interno) ────────────────────────────────────────────────
+
+/**
+ * Scrive un evento "accesso negato" nel log per utenti autenticati (403).
+ * Non chiamare per richieste anonime (401) — evita spam DB.
+ * @internal
+ */
+async function _logDeniedAccess(token: AdminToken, url: string): Promise<void> {
+  try {
+    const route = new URL(url).pathname
+    await prisma.adminLog.create({
+      data: {
+        adminId:     token.id    ?? null,
+        adminEmail:  token.email ?? 'unknown',
+        targetId:    null,
+        targetEmail: token.email ?? 'unknown',
+        action:      'admin.access.denied',
+        details:     JSON.stringify({ route, requiredRole: 'super_admin', actualRole: token.role }),
+      },
+    })
+  } catch {
+    // Silenzioso — il log di sicurezza non deve bloccare la risposta
+  }
 }
 
 // ── logAdminAction ────────────────────────────────────────────────────────────

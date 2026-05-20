@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { requireSuperAdmin } from '@/lib/admin-auth'
+import { requireSuperAdmin, logAdminAction } from '@/lib/admin-auth'
 
 /**
  * GET /api/admin/system/auth-health
@@ -23,6 +23,18 @@ export async function GET(req: NextRequest) {
   const googleProvider = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
   const nextAuthUrl    = !!process.env.NEXTAUTH_URL
   const nextAuthSecret = !!process.env.NEXTAUTH_SECRET
+
+  // Audit log — questa route espone stato config OAuth, loggare ogni accesso
+  logAdminAction({
+    adminToken:  auth.token,
+    targetEmail: 'system',
+    action:      'admin.auth_health.view',
+    details:     JSON.stringify({
+      googleProvider: googleProvider ? 'ACTIVE' : 'MISSING',
+      nextAuthUrl:    nextAuthUrl    ? 'OK'     : 'MISSING',
+      nextAuthSecret: nextAuthSecret ? 'OK'     : 'MISSING',
+    }),
+  }).catch(() => {})
 
   return NextResponse.json({
     googleProvider: googleProvider ? 'ACTIVE'  : 'MISSING',

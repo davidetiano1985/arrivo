@@ -26,7 +26,7 @@ function formatDate(date: Date) {
 
 export default async function RichiestePage() {
   const session = await getServerSession(authOptions)
-  if ((session?.user as { role?: string })?.role !== 'super_admin') redirect('/login')
+  if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
 
   const richieste = await prisma.localeRequest.findMany({
     orderBy: { createdAt: 'desc' },

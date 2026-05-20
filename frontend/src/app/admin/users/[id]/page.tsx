@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 
 import { authOptions } from '@/lib/auth'
@@ -31,7 +31,8 @@ function fmtId(n: number) {
 
 export default async function UserDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
-  const currentUserId = (session?.user as { id?: string })?.id ?? ''
+  if (!session || (session.user as { role?: string })?.role !== 'super_admin') redirect('/login')
+  const currentUserId = (session.user as { id?: string })?.id ?? ''
 
   const user = await prisma.user.findUnique({
     where: { id: params.id },

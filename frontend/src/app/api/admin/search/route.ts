@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { prisma }            from '@/lib/prisma'
-import { requireSuperAdmin } from '@/lib/admin-auth'
+import { prisma }                        from '@/lib/prisma'
+import { requireSuperAdmin, logAdminAction } from '@/lib/admin-auth'
 
 export async function GET(req: NextRequest) {
   const auth = await requireSuperAdmin(req)
@@ -13,6 +13,14 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) {
     return NextResponse.json({ users: [], restaurants: [], logs: [] })
   }
+
+  // Audit log — ricerca admin con query reale
+  logAdminAction({
+    adminToken:  auth.token,
+    targetEmail: 'system',
+    action:      'admin.search',
+    details:     JSON.stringify({ q }),
+  }).catch(() => {})
 
   // Numeric ID shortcut
   const numericId =

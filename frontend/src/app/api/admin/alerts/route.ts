@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { prisma }            from '@/lib/prisma'
-import { requireSuperAdmin } from '@/lib/admin-auth'
+import { prisma }                        from '@/lib/prisma'
+import { requireSuperAdmin, logAdminAction } from '@/lib/admin-auth'
 
 // ── Computed alert types ──────────────────────────────────────────────────────
 
@@ -146,6 +146,12 @@ export async function POST(req: NextRequest) {
         resolvedBy: (token.email as string | undefined) ?? 'admin',
       },
     })
+    logAdminAction({
+      adminToken:  token,
+      targetEmail: 'system',
+      action:      'admin.alert.resolve',
+      details:     JSON.stringify({ alertId: body.id }),
+    }).catch(() => {})
     return NextResponse.json({ ok: true })
   }
 
@@ -159,6 +165,12 @@ export async function POST(req: NextRequest) {
         metadata:    body.metadata    ?? null,
       },
     })
+    logAdminAction({
+      adminToken:  token,
+      targetEmail: 'system',
+      action:      'admin.alert.create',
+      details:     JSON.stringify({ type: body.type, severity: body.severity, title: body.title }),
+    }).catch(() => {})
     return NextResponse.json({ ok: true, alert })
   }
 
